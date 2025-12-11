@@ -7,6 +7,8 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, enum: Roles },
+  phone: { type: String, },
+  address: { type: String },
   language: { type: [String], required: true },
   bio: { type: String, required: true },
   isActive: { type: String, required: true, enum: IisActive },

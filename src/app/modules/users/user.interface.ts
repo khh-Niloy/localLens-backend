@@ -13,6 +13,8 @@ export interface IUser {
   name: string;
   image: string;
   email: string;
+  phone: string;
+  address: string;
   password: string;
   role: Roles;
   bio: string,
