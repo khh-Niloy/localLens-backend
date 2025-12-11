@@ -13,6 +13,9 @@ interface IEnvVars {
   CORS_FRONTEND_URL: string;
   ADMIN_EMAIL: string;
   ADMIN_PASSWORD: string;
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
 }
 
 const loadEnvVars = (): IEnvVars => {
@@ -28,6 +31,9 @@ const loadEnvVars = (): IEnvVars => {
     "CORS_FRONTEND_URL",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
   ];
   requiredEnvVar.forEach((key) => {
     if (!process.env[key]) {
@@ -46,6 +52,9 @@ const loadEnvVars = (): IEnvVars => {
   CORS_FRONTEND_URL: process.env.CORS_FRONTEND_URL as string,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL as string,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD as string,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME as string,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY as string,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
   };
 };
 
