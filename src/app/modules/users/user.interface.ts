@@ -11,14 +11,14 @@ export enum Roles {
 
 export interface IUser {
   name: string;
-  image: string;
+  image?: string;
   email: string;
-  phone: string;
-  address: string;
+  phone?: string;
+  address?: string;
   password: string;
   role: Roles;
-  bio: string,
-  language: string[],
+  bio?: string;
+  language?: string[];
   isActive: IisActive;
   isDeleted: boolean;
   isBlocked: boolean;

@@ -7,7 +7,10 @@ export const authRoutes = Router();
 
 authRoutes.post("/login", authController.userLogin);
 
-authRoutes.post("/getMe", authController.getMe);
+authRoutes.get("/getMe", 
+  roleBasedProtection(...Object.values(Roles)),
+  authController.getMe
+);
 
 authRoutes.post("/refresh-token", authController.getNewAccessToken);
 

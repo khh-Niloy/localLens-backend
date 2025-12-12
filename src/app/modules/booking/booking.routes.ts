@@ -1,10 +1,56 @@
 import { Router } from "express";
 import { roleBasedProtection } from "../../middleware/roleBasedProtection";
 import { validateSchema } from "../../middleware/zodValidate";
-import { createBookingZodSchema } from "./booking.validation";
+import { createBookingZodSchema, updateBookingStatusZodSchema } from "./booking.validation";
 import { Roles } from "../users/user.interface";
 import { bookingController } from "./booking.controller";
 
-export const bookingRoutes = Router()
+export const bookingRoutes = Router();
 
-bookingRoutes.post("/",roleBasedProtection(...Object.values(Roles)), validateSchema(createBookingZodSchema), bookingController.createBooking)
+// Tourist routes
+bookingRoutes.post(
+  "/",
+  roleBasedProtection(Roles.TOURIST),
+  validateSchema(createBookingZodSchema),
+  bookingController.createBooking
+);
+
+bookingRoutes.get(
+  "/my-bookings",
+  roleBasedProtection(Roles.TOURIST),
+  bookingController.getMyBookings
+);
+
+// Guide routes
+bookingRoutes.get(
+  "/guide/upcoming",
+  roleBasedProtection(Roles.GUIDE),
+  bookingController.getUpcomingBookings
+);
+
+bookingRoutes.get(
+  "/guide/pending",
+  roleBasedProtection(Roles.GUIDE),
+  bookingController.getPendingBookings
+);
+
+bookingRoutes.patch(
+  "/:id/status",
+  roleBasedProtection(Roles.GUIDE, Roles.ADMIN),
+  validateSchema(updateBookingStatusZodSchema),
+  bookingController.updateBookingStatus
+);
+
+// Admin routes
+bookingRoutes.get(
+  "/admin/all",
+  roleBasedProtection(Roles.ADMIN),
+  bookingController.getAllBookings
+);
+
+// Common routes
+bookingRoutes.get(
+  "/:id",
+  roleBasedProtection(...Object.values(Roles)),
+  bookingController.getBookingById
+);

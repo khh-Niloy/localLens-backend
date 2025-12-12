@@ -3,15 +3,15 @@ import { IisActive, IUser, Roles } from "./user.interface";
 
 const userSchema = new Schema<IUser>({
   name: { type: String, required: true },
-  image: { type: String, required: true },
+  image: { type: String, required: false },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, enum: Roles },
-  phone: { type: String, },
+  phone: { type: String },
   address: { type: String },
-  language: { type: [String], required: true },
-  bio: { type: String, required: true },
-  isActive: { type: String, required: true, enum: IisActive },
+  language: { type: [String], required: false, default: [] },
+  bio: { type: String, required: false },
+  isActive: { type: String, required: true, enum: IisActive, default: IisActive.ACTIVE },
   isDeleted: { type: Boolean, default: false },
   isBlocked: { type: Boolean, default: false },
 });

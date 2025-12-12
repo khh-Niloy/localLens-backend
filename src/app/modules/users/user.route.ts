@@ -1,19 +1,29 @@
-import { NextFunction, Router } from "express";
+import { Router } from "express";
 import { userController } from "./user.controller";
 import { Roles } from "./user.interface";
 import { roleBasedProtection } from "../../middleware/roleBasedProtection";
 import { validateSchema } from "../../middleware/zodValidate";
-import { userCreateZodSchema } from "./user.validation";
+import { userCreateZodSchema, userUpdateZodSchema } from "./user.validation";
 
 export const userRoutes = Router();
 
+// Public routes
+userRoutes.get("/enums", userController.getUserEnums); // Get roles and statuses
+userRoutes.get("/profile/:id", userController.getPublicProfile);
+
+// Protected routes
 userRoutes.get(
-  "/all-user",
-  roleBasedProtection(Roles.ADMIN),
-  userController.getAllUser
+  "/profile",
+  roleBasedProtection(...Object.values(Roles)),
+  userController.getProfile
 );
 
-userRoutes.get("/profile", roleBasedProtection(...Object.values(Roles)), userController.getProfile)
+userRoutes.patch(
+  "/profile",
+  roleBasedProtection(...Object.values(Roles)),
+  validateSchema(userUpdateZodSchema),
+  userController.updateProfile
+);
 
 userRoutes.post(
   "/register",
@@ -21,8 +31,21 @@ userRoutes.post(
   userController.createUser
 );
 
+// Admin routes
+userRoutes.get(
+  "/admin/all",
+  roleBasedProtection(Roles.ADMIN),
+  userController.getAllUser
+);
+
 userRoutes.patch(
-  "/:id",
-  roleBasedProtection(...Object.values(Roles)),
+  "/admin/:id",
+  roleBasedProtection(Roles.ADMIN),
   userController.updateUser
+);
+
+userRoutes.delete(
+  "/admin/:id",
+  roleBasedProtection(Roles.ADMIN),
+  userController.deleteUser
 );
