@@ -21,13 +21,12 @@ const successPaymentService = async (query: Record<string, string>) => {
       throw new Error("Booking not found");
     }
 
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      paymentRecord?.bookingId,
-      { status: BOOKING_STATUS.COMPLETE },
-      { new: true, session }
-    )
-      .populate("tour", "title")
-      .populate("user", "name email");
+    // Payment happens after tour completion, so booking status should remain COMPLETED
+    // Only update payment status, not booking status
+    const updatedBooking = await Booking.findById(paymentRecord?.bookingId)
+      .populate("tourId", "title images location")
+      .populate("userId", "name email phone")
+      .populate("guideId", "name email");
 
     if (!updatedBooking) {
       throw new Error("Booking not found");
@@ -89,7 +88,7 @@ const cancelPaymentService = async (query: Record<string, string>) => {
 
     await Booking.findByIdAndUpdate(
       paymentRecord?.bookingId,
-      { status: BOOKING_STATUS.CANCEL },
+      { status: BOOKING_STATUS.CANCELLED },
       { new: true, session }
     );
 

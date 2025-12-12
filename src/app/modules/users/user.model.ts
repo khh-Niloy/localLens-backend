@@ -11,6 +11,11 @@ const userSchema = new Schema<IUser>({
   address: { type: String },
   language: { type: [String], required: false, default: [] },
   bio: { type: String, required: false },
+  // Guide-specific fields
+  expertise: { type: [String], required: false, default: [] },
+  dailyRate: { type: Number, required: false, min: 0 },
+  // Tourist-specific fields
+  travelPreferences: { type: [String], required: false, default: [] },
   isActive: { type: String, required: true, enum: IisActive, default: IisActive.ACTIVE },
   isDeleted: { type: Boolean, default: false },
   isBlocked: { type: Boolean, default: false },

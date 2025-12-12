@@ -2,6 +2,28 @@ import { IReview } from "./review.interface";
 import { Review } from "./review.model";
 import { Booking } from "../booking/booking.model";
 import { BOOKING_STATUS } from "../booking/booking.interface";
+import { Tour } from "../tour/tour.model";
+
+// Helper function to update tour ratings
+const updateTourRating = async (tourId: any) => {
+  const reviews = await Review.find({ tourId });
+  if (reviews.length === 0) {
+    await Tour.findByIdAndUpdate(tourId, {
+      rating: 0,
+      reviewCount: 0,
+    });
+    return;
+  }
+
+  const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+  const averageRating = totalRating / reviews.length;
+  const reviewCount = reviews.length;
+
+  await Tour.findByIdAndUpdate(tourId, {
+    rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+    reviewCount,
+  });
+};
 
 const createReview = async (reviewData: IReview) => {
   // Check if booking exists and is completed
@@ -25,6 +47,10 @@ const createReview = async (reviewData: IReview) => {
   }
   
   const review = await Review.create(reviewData);
+  
+  // Update tour rating after creating review
+  await updateTourRating(reviewData.tourId);
+  
   return await Review.findById(review._id)
     .populate("userId", "name image")
     .populate("tourId", "title")
@@ -49,6 +75,9 @@ const updateReview = async (reviewId: string, userId: string, updateData: Partia
     .populate("userId", "name image")
     .populate("tourId", "title")
     .populate("guideId", "name image");
+  
+  // Update tour rating after updating review
+  await updateTourRating(review.tourId);
     
   return updatedReview;
 };
@@ -63,7 +92,11 @@ const deleteReview = async (reviewId: string, userId: string) => {
     throw new Error("You can only delete your own reviews");
   }
   
+  const tourId = review.tourId;
   await Review.findByIdAndDelete(reviewId);
+  
+  // Update tour rating after deleting review
+  await updateTourRating(tourId);
 };
 
 const getTourReviews = async (tourId: string, page: number, limit: number) => {
@@ -134,20 +167,6 @@ const getUserReviews = async (userId: string, page: number, limit: number) => {
   };
 };
 
-const markHelpful = async (reviewId: string) => {
-  const review = await Review.findByIdAndUpdate(
-    reviewId,
-    { $inc: { helpful: 1 } },
-    { new: true }
-  );
-  
-  if (!review) {
-    throw new Error("Review not found");
-  }
-  
-  return review;
-};
-
 const getAllReviews = async (page: number, limit: number) => {
   const skip = (page - 1) * limit;
   
@@ -173,10 +192,17 @@ const getAllReviews = async (page: number, limit: number) => {
 };
 
 const adminDeleteReview = async (reviewId: string) => {
-  const review = await Review.findByIdAndDelete(reviewId);
+  const review = await Review.findById(reviewId);
   if (!review) {
     throw new Error("Review not found");
   }
+  
+  const tourId = review.tourId;
+  await Review.findByIdAndDelete(reviewId);
+  
+  // Update tour rating after deleting review
+  await updateTourRating(tourId);
+  
   return review;
 };
 
@@ -187,7 +213,6 @@ export const reviewService = {
   getTourReviews,
   getGuideReviews,
   getUserReviews,
-  markHelpful,
   getAllReviews,
   adminDeleteReview,
 };

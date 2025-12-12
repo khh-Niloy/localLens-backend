@@ -20,10 +20,18 @@ export const userCreateZodSchema = z.object({
 export const userUpdateZodSchema = z.object({
   body: z.object({
     name: z.string().optional(),
-    image: z.string().optional(),
+    image: z.string().optional(), // This will be set from file.path after multer upload
     phone: z.string().optional(),
     address: z.string().optional(),
     bio: z.string().optional(),
     language: z.any().optional(), // Flexible array handling
+    // Guide-specific fields
+    expertise: z.any().optional(), // Flexible array handling
+    dailyRate: z.union([z.number(), z.string()]).optional().transform((val) => {
+      if (typeof val === 'string') return parseFloat(val);
+      return val;
+    }),
+    // Tourist-specific fields
+    travelPreferences: z.any().optional(), // Flexible array handling
   })
 });

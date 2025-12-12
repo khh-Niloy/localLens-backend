@@ -1,40 +1,58 @@
 import { Request, Response } from "express";
 import { responseManager } from "../../utils/responseManager";
 import { reviewService } from "./review.service";
+import { JwtPayload } from "jsonwebtoken";
 
 const createReview = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.userId;
-    const reviewData = { ...req.body, userId };
+    const jwt_user = req.user as JwtPayload;
+    const reviewData = { ...req.body, userId: jwt_user.userId };
     
     const result = await reviewService.createReview(reviewData);
-    responseManager(res, 201, true, "Review created successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 201,
+      success: true,
+      message: "Review created successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 400);
   }
 };
 
 const updateReview = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const jwt_user = req.user as JwtPayload;
     
-    const result = await reviewService.updateReview(id, userId, req.body);
-    responseManager(res, 200, true, "Review updated successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    const result = await reviewService.updateReview(id, jwt_user.userId, req.body);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Review updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 400);
   }
 };
 
 const deleteReview = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const jwt_user = req.user as JwtPayload;
     
-    await reviewService.deleteReview(id, userId);
-    responseManager(res, 200, true, "Review deleted successfully");
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    await reviewService.deleteReview(id, jwt_user.userId);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Review deleted successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 400);
   }
 };
 
@@ -48,9 +66,15 @@ const getTourReviews = async (req: Request, res: Response) => {
       Number(page),
       Number(limit)
     );
-    responseManager(res, 200, true, "Tour reviews retrieved successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Tour reviews retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
   }
 };
 
@@ -64,9 +88,15 @@ const getGuideReviews = async (req: Request, res: Response) => {
       Number(page),
       Number(limit)
     );
-    responseManager(res, 200, true, "Guide reviews retrieved successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Guide reviews retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
   }
 };
 
@@ -80,20 +110,15 @@ const getUserReviews = async (req: Request, res: Response) => {
       Number(page),
       Number(limit)
     );
-    responseManager(res, 200, true, "User reviews retrieved successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
-  }
-};
-
-const markHelpful = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    const result = await reviewService.markHelpful(id);
-    responseManager(res, 200, true, "Review marked as helpful", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "User reviews retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
   }
 };
 
@@ -102,9 +127,15 @@ const getAllReviews = async (req: Request, res: Response) => {
     const { page = 1, limit = 20 } = req.query;
     
     const result = await reviewService.getAllReviews(Number(page), Number(limit));
-    responseManager(res, 200, true, "All reviews retrieved successfully", result);
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "All reviews retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
   }
 };
 
@@ -113,9 +144,14 @@ const adminDeleteReview = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     await reviewService.adminDeleteReview(id);
-    responseManager(res, 200, true, "Review deleted successfully");
-  } catch (error: any) {
-    responseManager(res, 500, false, error.message);
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Review deleted successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 400);
   }
 };
 
@@ -126,7 +162,6 @@ export const reviewController = {
   getTourReviews,
   getGuideReviews,
   getUserReviews,
-  markHelpful,
   getAllReviews,
   adminDeleteReview,
 };

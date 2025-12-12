@@ -3,6 +3,8 @@ import { authRoutes } from "./modules/auth/auth.routes";
 import { tourRoutes } from "./modules/tour/tour.route";
 import { userRoutes } from "./modules/users/user.route";
 import { wishlistRoutes } from "./modules/wishlist/wishlist.route";
+import { bookingRoutes } from "./modules/booking/booking.routes";
+import { reviewRoutes } from "./modules/review/review.routes";
 
 export const routes = Router();
 
@@ -22,6 +24,14 @@ const allRoutes = [
   {
     path: "/wishlist",
     route: wishlistRoutes,
+  },
+  {
+    path: "/booking",
+    route: bookingRoutes,
+  },
+  {
+    path: "/review",
+    route: reviewRoutes,
   },
 ];
 

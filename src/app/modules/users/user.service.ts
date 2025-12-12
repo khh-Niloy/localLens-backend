@@ -93,6 +93,14 @@ const getAllUserService = async () => {
   return { allUser, totalCount };
 };
 
+const getUsersByRoleService = async (role: Roles) => {
+  const users = await User.find({ role, isDeleted: false })
+    .select("-password")
+    .sort({ createdAt: -1 });
+  const totalCount = await User.countDocuments({ role, isDeleted: false });
+  return { users, totalCount };
+};
+
 const getProfileService = async (userInfo: JwtPayload) => {
   const profile = await User.findById(userInfo.userId).select("-password")
   return profile
@@ -116,7 +124,16 @@ const updateProfileService = async (userInfo: JwtPayload, reqBody: Partial<IUser
   }
 
   // Prevent users from updating sensitive fields
+  // Common fields + role-specific fields
   const allowedFields = ['name', 'image', 'phone', 'address', 'bio', 'language'];
+  
+  // Add role-specific fields
+  if (user.role === Roles.GUIDE) {
+    allowedFields.push('expertise', 'dailyRate');
+  } else if (user.role === Roles.TOURIST) {
+    allowedFields.push('travelPreferences');
+  }
+  
   const updateData: Partial<IUser> = {};
   
   for (const field of allowedFields) {
@@ -153,6 +170,7 @@ const deleteUserService = async (userId: string) => {
 export const userServices = {
   createUserService,
   getAllUserService,
+  getUsersByRoleService,
   updateUserService,
   getProfileService,
   getPublicProfileService,

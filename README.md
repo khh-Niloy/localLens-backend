@@ -76,6 +76,17 @@ Each module follows a consistent structure:
 - ✅ View tour details and manage tour status
 - ✅ Delete tours with proper authorization
 - ✅ Dashboard with tour statistics and management
+- ✅ **Profile Management**: Update profile with guide-specific information
+  - Edit name, bio, profile picture, phone, address
+  - Add/remove languages spoken
+  - Set expertise areas (History, Nightlife, Shopping, Food & Dining, etc.)
+  - Set daily rate (how much they charge per day)
+- ✅ **Booking Management**: Accept/decline booking requests
+  - View pending bookings requiring action
+  - Accept bookings (PENDING → CONFIRMED)
+  - Decline bookings (PENDING → CANCELLED)
+  - View upcoming confirmed bookings
+  - Contact tourists directly
 
 #### **For Admins:**
 - ✅ Complete system oversight and user management
@@ -84,11 +95,24 @@ Each module follows a consistent structure:
 
 #### **For Tourists:**
 - ✅ User authentication and profile management
+- ✅ **Profile Management**: Update profile with travel preferences
+  - Edit name, bio, profile picture, phone, address
+  - Add/remove languages spoken
+  - Set travel preferences (Budget, Luxury, Adventure, Cultural, etc.)
 - ✅ **Wishlist functionality**: Add/remove tours, view saved items
 - ✅ **Tour Discovery**: Browse all tours with search and filtering
 - ✅ **Tour Details**: Comprehensive tour information pages with booking capability
-- ✅ **Booking Interface**: Complete booking modal with date selection and guest management
-- 🚧 **In Progress**: Booking system backend and trip management
+- ✅ **Booking System**: Complete booking workflow with payment integration
+  - Create bookings with date/time and guest selection
+  - View upcoming and past bookings
+  - Payment processing via SSL Commerz gateway
+  - Payment success/fail/cancel redirect handling
+- ✅ **Trip Management**: View and manage all bookings
+- ✅ **Review & Rating System**: Post-tour review functionality
+  - Rate and review guides after completed tours
+  - View reviews on tour details pages
+  - Automatic tour rating calculation
+  - One review per booking (prevents duplicates)
 
 ### **2. Advanced Tour Management System**
 - Dynamic tour creation with detailed itineraries and scheduling
@@ -99,18 +123,35 @@ Each module follows a consistent structure:
 - Comprehensive tour details (highlights, inclusions, policies)
 
 ### **3. Complete Booking & Payment System**
-- Full booking workflow with multiple status states
-- SSL Commerce payment gateway integration
-- Guest management
-- Automated booking confirmations and status updates
-- Revenue tracking and analytics
+- **Booking Workflow (3.5)**:
+  - ✅ Tourist requests booking with date/time
+  - ✅ Booking created with `PENDING` status (no payment yet)
+  - ✅ Guide can accept (`CONFIRMED`) or decline (`CANCELLED`) bookings
+  - ✅ Status updates: `PENDING` → `CONFIRMED` → `COMPLETED` or `CANCELLED`
+  - ✅ Guide ownership validation for status updates
+  - ✅ Guide marks tour as `COMPLETED` after tour ends
+- **Payment Integration (3.7)**:
+  - ✅ **Payment happens AFTER tour completion** (Guide receives payment after tour)
+  - ✅ Tourist pays for completed tour via SSL Commerz gateway
+  - ✅ Payment status tracking: `UNPAID` → `PAID` → `FAILED`/`CANCELLED`
+  - ✅ Payment initiated only for `COMPLETED` bookings
+  - ✅ Secure payment processing with transaction IDs
+  - ✅ Payment redirect handling (success/fail/cancel pages)
+  - ✅ Booking status remains `COMPLETED` after payment (no status change)
+- **Additional Features**:
+  - ✅ Guest count management (numberOfGuests)
+  - ✅ Total amount calculation (tourFee × numberOfGuests)
+  - ✅ Booking date and time selection
+  - ✅ Tourist and guide booking views
+  - ✅ Payment status display
+  - ✅ "Pay Now" button for completed tours with unpaid status
 
-### **4. Review & Rating System (New)**
-- Tourist review submission for completed tours
-- Guide rating and feedback system
-- Review moderation and helpful voting
-- Aggregate rating calculations
-- Review-based tour recommendations
+### **4. Review & Rating System**
+- ✅ Tourist review submission for completed tours
+- ✅ Guide rating and feedback system
+- ✅ Review moderation
+- ✅ Aggregate rating calculations
+- ✅ Review display on tour details pages
 
 ### **4. Authentication & Security**
 - JWT-based authentication with refresh tokens
@@ -206,19 +247,32 @@ SSL_CANCEL_FRONTEND_URL=your_frontend_cancel_url
 ```typescript
 interface IUser {
   name: string;
-  image: string;
+  image?: string;
   email: string;
-  phone: string;
-  address: string;
+  phone?: string;
+  address?: string;
   password: string;
   role: 'TOURIST' | 'GUIDE' | 'ADMIN';
-  bio: string;
-  language: string[];
+  bio?: string;
+  language?: string[];
+  // Guide-specific fields
+  expertise?: string[]; // e.g., History, Nightlife, Shopping
+  dailyRate?: number; // How much they charge per day
+  // Tourist-specific fields
+  travelPreferences?: string[]; // Travel preferences
   isActive: 'ACTIVE' | 'INACTIVE';
   isDeleted: boolean;
   isBlocked: boolean;
 }
 ```
+
+**Profile Management:**
+- **Common Fields**: Name, Profile Picture, Bio, Languages Spoken, Phone, Address
+- **Guide-Specific Fields**: 
+  - `expertise`: Array of expertise areas (History, Nightlife, Shopping, Food & Dining, etc.)
+  - `dailyRate`: Daily rate charged by the guide (USD)
+- **Tourist-Specific Fields**:
+  - `travelPreferences`: Array of travel preferences (Budget Travel, Luxury, Adventure, Cultural, etc.)
 
 ### **Tour Schema (Enhanced)**
 ```typescript
@@ -399,6 +453,31 @@ GET    /wishlist             # Get user's wishlist (Tourist only)
 POST   /wishlist             # Add tour to wishlist (Tourist only)
 DELETE /wishlist/:tourId     # Remove tour from wishlist (Tourist only)
 GET    /wishlist/check/:tourId # Check if tour is in wishlist (Tourist only)
+
+Bookings:
+POST   /booking              # Create booking (Tourist only) - Returns booking (no payment)
+GET    /booking/my-bookings  # Get tourist's bookings (Tourist only)
+POST   /booking/:id/payment # Initiate payment for completed booking (Tourist only)
+GET    /booking/guide/pending # Get guide's pending bookings (Guide only)
+GET    /booking/guide/upcoming # Get guide's upcoming bookings (Guide only)
+PATCH  /booking/:id/status   # Update booking status (Guide/Admin) - Accept/Decline/Complete
+GET    /booking/:id          # Get booking by ID (All authenticated users)
+GET    /booking/admin/all    # Get all bookings (Admin only)
+
+Payments:
+POST   /payment/success      # Payment success callback (SSL Commerz)
+POST   /payment/fail         # Payment fail callback (SSL Commerz)
+POST   /payment/cancel       # Payment cancel callback (SSL Commerz)
+
+Reviews:
+POST   /review               # Create review (Tourist only) - For completed bookings
+PATCH  /review/:id           # Update review (Tourist only)
+DELETE /review/:id           # Delete review (Tourist only)
+GET    /review/tour/:tourId  # Get reviews for a tour (Public)
+GET    /review/guide/:guideId # Get reviews for a guide (Public)
+GET    /review/user/:userId  # Get reviews by a user (Public)
+GET    /review/admin/all     # Get all reviews (Admin only)
+DELETE /review/admin/:id     # Delete any review (Admin only)
 ```
 
 ### **Frontend Integration**

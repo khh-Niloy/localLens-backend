@@ -4,6 +4,7 @@ import { Roles } from "./user.interface";
 import { roleBasedProtection } from "../../middleware/roleBasedProtection";
 import { validateSchema } from "../../middleware/zodValidate";
 import { userCreateZodSchema, userUpdateZodSchema } from "./user.validation";
+import { profileUpload } from "../../config/multer.config";
 
 export const userRoutes = Router();
 
@@ -21,6 +22,7 @@ userRoutes.get(
 userRoutes.patch(
   "/profile",
   roleBasedProtection(...Object.values(Roles)),
+  profileUpload.single('image'), // Handle single file upload for profile picture
   validateSchema(userUpdateZodSchema),
   userController.updateProfile
 );
@@ -36,6 +38,12 @@ userRoutes.get(
   "/admin/all",
   roleBasedProtection(Roles.ADMIN),
   userController.getAllUser
+);
+
+userRoutes.get(
+  "/admin/role/:role",
+  roleBasedProtection(Roles.ADMIN),
+  userController.getUsersByRole
 );
 
 userRoutes.patch(

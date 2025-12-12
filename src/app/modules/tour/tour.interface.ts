@@ -2,9 +2,7 @@ import { Types } from "mongoose";
 
 export enum TOUR_STATUS {
   ACTIVE = "ACTIVE",
-  DRAFT = "DRAFT",
-  PAUSED = "PAUSED",
-  SUSPENDED = "SUSPENDED"
+  DEACTIVATE = "DEACTIVATE"
 }
 
 export enum TOUR_CATEGORY {

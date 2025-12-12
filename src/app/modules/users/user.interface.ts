@@ -19,6 +19,11 @@ export interface IUser {
   role: Roles;
   bio?: string;
   language?: string[];
+  // Guide-specific fields
+  expertise?: string[]; // e.g., History, Nightlife, Shopping
+  dailyRate?: number; // How much they charge per day
+  // Tourist-specific fields
+  travelPreferences?: string[]; // Travel preferences
   isActive: IisActive;
   isDeleted: boolean;
   isBlocked: boolean;

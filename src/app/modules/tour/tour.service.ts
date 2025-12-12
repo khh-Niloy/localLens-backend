@@ -23,7 +23,7 @@ const createTourService = async (tourData: Partial<ITourListing>) => {
 
 const getAllToursService = async () => {
   const tours = await Tour.find({ 
-    status: { $in: [TOUR_STATUS.ACTIVE, TOUR_STATUS.DRAFT] }, // Show both active and draft tours
+    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
     active: true 
   })
   .populate('guideId', 'name email image rating reviewCount')
@@ -100,7 +100,11 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
 };
 
 const getTourBySlugService = async (slug: string) => {
-  const tour = await Tour.findOne({ slug, active: true })
+  const tour = await Tour.findOne({ 
+    slug, 
+    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
+    active: true 
+  })
     .populate('guideId', 'name email image bio language rating reviewCount');
   
   if (!tour) {
@@ -115,7 +119,11 @@ const getTourByIdService = async (tourId: string) => {
     throw new Error("Invalid tour ID");
   }
 
-  const tour = await Tour.findById(tourId)
+  const tour = await Tour.findOne({ 
+    _id: tourId,
+    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
+    active: true 
+  })
     .populate('guideId', 'name email image bio language rating reviewCount');
   
   if (!tour) {
@@ -220,11 +228,37 @@ const getMyToursService = async (userId: string) => {
 };
 
 const getAllToursForAdminService = async () => {
+  const { Booking } = await import("../booking/booking.model");
+  
   const tours = await Tour.find()
-    .populate('guideId', 'name email image')
+    .populate('guideId', 'name email image phone')
     .sort({ createdAt: -1 });
   
-  return tours;
+  // Get booking counts and associated tourists for each tour
+  const toursWithBookings = await Promise.all(
+    tours.map(async (tour) => {
+      const bookings = await Booking.find({ tourId: tour._id })
+        .populate('userId', 'name email image')
+        .populate('payment', 'status amount transactionId')
+        .sort({ createdAt: -1 });
+      
+      const bookingCount = bookings.length;
+      const confirmedBookings = bookings.filter((b: any) => b.status === 'CONFIRMED').length;
+      const totalRevenue = bookings
+        .filter((b: any) => b.payment?.status === 'PAID')
+        .reduce((sum: number, b: any) => sum + (b.payment?.amount || 0), 0);
+      
+      return {
+        ...tour.toObject(),
+        bookingCount,
+        confirmedBookings,
+        totalRevenue,
+        recentBookings: bookings.slice(0, 5), // Last 5 bookings
+      };
+    })
+  );
+  
+  return toursWithBookings;
 };
 
 const updateTourRatingService = async (tourId: string, newRating: number, reviewCount: number) => {

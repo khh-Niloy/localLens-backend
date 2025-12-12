@@ -128,6 +128,25 @@ const getBookingById = async (req: Request, res: Response) => {
   }
 };
 
+const initiatePayment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const jwt_user = req.user as JwtPayload;
+    
+    const result = await bookingServices.initiatePaymentForCompletedBooking(id, jwt_user.userId);
+
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Payment initiated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 400);
+  }
+};
+
 export const bookingController = {
   createBooking,
   getMyBookings,
@@ -136,4 +155,5 @@ export const bookingController = {
   updateBookingStatus,
   getAllBookings,
   getBookingById,
+  initiatePayment,
 };

@@ -21,6 +21,12 @@ bookingRoutes.get(
   bookingController.getMyBookings
 );
 
+bookingRoutes.post(
+  "/:id/payment",
+  roleBasedProtection(Roles.TOURIST),
+  bookingController.initiatePayment
+);
+
 // Guide routes
 bookingRoutes.get(
   "/guide/upcoming",
