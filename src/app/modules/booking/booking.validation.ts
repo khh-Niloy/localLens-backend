@@ -9,7 +9,6 @@ export const createBookingZodSchema = z.object({
     bookingTime: z.string().min(1, "Booking time is required"),
     numberOfGuests: z.number().positive("Number of guests must be positive").max(50, "Too many guests"),
     totalAmount: z.number().positive("Total amount must be positive"),
-    specialRequests: z.string().optional(),
   })
 });
 

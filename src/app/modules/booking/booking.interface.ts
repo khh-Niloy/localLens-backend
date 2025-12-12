@@ -17,7 +17,6 @@ export interface IBooking {
     bookingTime: string;
     numberOfGuests: number;
     totalAmount: number;
-    specialRequests?: string;
     status: BOOKING_STATUS;
     createdAt?: Date;
     updatedAt?: Date;

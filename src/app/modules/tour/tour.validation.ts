@@ -55,7 +55,7 @@ export const updateTourZodSchema = z.object({
 export const tourSearchZodSchema = z.object({
   query: z.object({
     category: z.nativeEnum(TOUR_CATEGORY).optional(),
-    location: z.string().optional(),
+      location: z.string().optional(),
     minPrice: z.string().optional(),
     maxPrice: z.string().optional(),
     rating: z.string().optional(),
