@@ -13,7 +13,10 @@ const successPaymentService = async (query: Record<string, string>) => {
     });
     const updatedPayment = await Payment.findByIdAndUpdate(
       paymentRecord?._id,
-      { status: PAYMENT_STATUS.PAID },
+      { 
+        status: PAYMENT_STATUS.PAID,
+        paidAt: new Date()
+      },
       { new: true, session }
     );
 

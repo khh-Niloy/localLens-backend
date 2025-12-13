@@ -5,6 +5,7 @@ import { userRoutes } from "./modules/users/user.route";
 import { wishlistRoutes } from "./modules/wishlist/wishlist.route";
 import { bookingRoutes } from "./modules/booking/booking.routes";
 import { reviewRoutes } from "./modules/review/review.routes";
+import { paymentRoutes } from "./modules/payment/payment.routes";
 
 export const routes = Router();
 
@@ -32,6 +33,10 @@ const allRoutes = [
   {
     path: "/review",
     route: reviewRoutes,
+  },
+  {
+    path: "/payment",
+    route: paymentRoutes,
   },
 ];
 

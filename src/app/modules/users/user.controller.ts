@@ -77,11 +77,11 @@ const getUsersByRole = async (req: Request, res: Response) => {
     const { role } = req.params;
     const { Roles } = await import("./user.interface");
     
-    if (!Object.values(Roles).includes(role as Roles)) {
+    if (!Object.values(Roles).includes(role as typeof Roles[keyof typeof Roles])) {
       return responseManager.error(res, new Error("Invalid role"), 400);
     }
     
-    const { users, totalCount } = await userServices.getUsersByRoleService(role as Roles);
+    const { users, totalCount } = await userServices.getUsersByRoleService(role as typeof Roles[keyof typeof Roles]);
     responseManager.success(res, {
       statusCode: 200,
       success: true,

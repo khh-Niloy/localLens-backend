@@ -49,6 +49,7 @@ const deleteReview = async (req: Request, res: Response) => {
       statusCode: 200,
       success: true,
       message: "Review deleted successfully",
+      data: null,
     });
   } catch (error) {
     console.log(error);
@@ -148,6 +149,7 @@ const adminDeleteReview = async (req: Request, res: Response) => {
       statusCode: 200,
       success: true,
       message: "Review deleted successfully",
+      data: null,
     });
   } catch (error) {
     console.log(error);

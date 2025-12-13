@@ -22,7 +22,6 @@ const tourSchema = new Schema<ITourListing>(
     longDescription: { type: String },
     itinerary: { type: [itinerarySchema], default: [] },
     tourFee: { type: Number, required: true },
-    originalPrice: { type: Number },
     maxDuration: { type: Number, required: true },
     meetingPoint: { type: String, required: true },
     maxGroupSize: { type: Number, required: true },

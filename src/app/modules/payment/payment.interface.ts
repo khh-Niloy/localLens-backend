@@ -14,5 +14,8 @@ export interface IPayment {
     transactionId: string;
     amount: number;
     paymentGatewayData?: any
-    status: PAYMENT_STATUS
+    status: PAYMENT_STATUS;
+    paidAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }

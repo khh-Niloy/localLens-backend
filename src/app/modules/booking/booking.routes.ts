@@ -40,6 +40,12 @@ bookingRoutes.get(
   bookingController.getPendingBookings
 );
 
+bookingRoutes.get(
+  "/guide/all",
+  roleBasedProtection(Roles.GUIDE),
+  bookingController.getAllGuideBookings
+);
+
 bookingRoutes.patch(
   "/:id/status",
   roleBasedProtection(Roles.GUIDE, Roles.ADMIN),

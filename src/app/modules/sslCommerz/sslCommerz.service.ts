@@ -14,10 +14,12 @@ const sslPaymentInit = async (payload: ISSLCommerz) => {
       tran_id: payload.transactionId,
 
       // These URLs (success_url, fail_url, cancel_url, ipn_url) are called by SSLCOMMERZ — not by your frontend or the user.
+      // success_url, fail_url, cancel_url redirect users after payment
+      // ipn_url is for Instant Payment Notification (server-to-server)
 
-      success_url: `${envVars.SSL_IPN_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=success`,
-      fail_url: `${envVars.SSL_IPN_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=fail`,
-      cancel_url: `${envVars.SSL_IPN_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=cancel`,
+      success_url: `${envVars.SSL_SUCCESS_BACKEND_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=success`,
+      fail_url: `${envVars.SSL_FAIL_BACKEND_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=fail`,
+      cancel_url: `${envVars.SSL_CANCEL_BACKEND_URL}?transactionId=${payload.transactionId}&amount=${payload.amount}&status=cancel`,
       ipn_url: envVars.SSL_IPN_URL,
       shipping_method: "N/A",
       product_name: "Tour",

@@ -137,8 +137,9 @@ const updateProfileService = async (userInfo: JwtPayload, reqBody: Partial<IUser
   const updateData: Partial<IUser> = {};
   
   for (const field of allowedFields) {
-    if (reqBody[field as keyof IUser] !== undefined) {
-      updateData[field as keyof IUser] = reqBody[field as keyof IUser];
+    const fieldKey = field as keyof IUser;
+    if (reqBody[fieldKey] !== undefined) {
+      (updateData as any)[fieldKey] = reqBody[fieldKey];
     }
   }
 

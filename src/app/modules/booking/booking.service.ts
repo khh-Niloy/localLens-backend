@@ -86,6 +86,18 @@ const getPendingBookingsService = async (guideId: string) => {
   return bookings;
 };
 
+const getAllGuideBookingsService = async (guideId: string) => {
+  const bookings = await Booking.find({
+    guideId
+  })
+    .populate("userId", "name email phone image address")
+    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate("payment", "status transactionId amount")
+    .sort({ createdAt: -1 });
+
+  return bookings;
+};
+
 const updateBookingStatusService = async (
   bookingId: string,
   status: BOOKING_STATUS,
@@ -245,7 +257,7 @@ const initiatePaymentForCompletedBooking = async (bookingId: string, userId: str
         { session }
       );
 
-      payment = newPayment[0];
+      payment = newPayment[0]._id;
     }
 
     // Check if payment is already paid
@@ -290,6 +302,7 @@ export const bookingServices = {
   getMyBookingsService,
   getUpcomingBookingsService,
   getPendingBookingsService,
+  getAllGuideBookingsService,
   updateBookingStatusService,
   getAllBookingsService,
   getBookingByIdService,

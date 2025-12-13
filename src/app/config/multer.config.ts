@@ -47,27 +47,27 @@ export const upload = multer({
 // Single file upload for profile pictures
 const profileStorage = new CloudinaryStorage({
   cloudinary: cloudinaryFileUpload,
-  params: {
-    folder: 'profiles', // Store profile pictures in a separate folder
-    public_id: (req, file) => {
-      const fileName = file.originalname
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/\./g, "-")
-        .replace(/[^a-z0-9\-\.]/g, "");
+  params: async (req, file) => {
+    const fileName = file.originalname
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/\./g, "-")
+      .replace(/[^a-z0-9\-\.]/g, "");
 
-      const extension = file.originalname.split(".").pop();
-      const uniqueFileName =
-        Math.random().toString(36).substring(2) +
-        "-" +
-        Date.now() +
-        "-" +
-        fileName +
-        "." +
-        extension;
+    const extension = file.originalname.split(".").pop();
+    const uniqueFileName =
+      Math.random().toString(36).substring(2) +
+      "-" +
+      Date.now() +
+      "-" +
+      fileName +
+      "." +
+      extension;
 
-      return uniqueFileName;
-    },
+    return {
+      folder: 'profiles', // Store profile pictures in a separate folder
+      public_id: uniqueFileName,
+    };
   },
 });
 

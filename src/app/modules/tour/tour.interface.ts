@@ -35,7 +35,6 @@ export interface ITourListing {
   longDescription?: string;
   itinerary: IItineraryItem[];
   tourFee: number;
-  originalPrice?: number;
   maxDuration: number;
   meetingPoint: string;
   maxGroupSize: number;

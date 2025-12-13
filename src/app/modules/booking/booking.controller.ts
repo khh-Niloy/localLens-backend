@@ -74,6 +74,23 @@ const getPendingBookings = async (req: Request, res: Response) => {
   }
 };
 
+const getAllGuideBookings = async (req: Request, res: Response) => {
+  try {
+    const jwt_user = req.user as JwtPayload;
+    const bookings = await bookingServices.getAllGuideBookingsService(jwt_user.userId);
+
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "All bookings retrieved successfully",
+      data: bookings,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
+  }
+};
+
 const updateBookingStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -152,6 +169,7 @@ export const bookingController = {
   getMyBookings,
   getUpcomingBookings,
   getPendingBookings,
+  getAllGuideBookings,
   updateBookingStatus,
   getAllBookings,
   getBookingById,

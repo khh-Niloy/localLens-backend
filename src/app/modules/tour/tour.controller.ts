@@ -3,6 +3,7 @@ import { responseManager } from "../../utils/responseManager";
 import { tourServices } from "./tour.service";
 import { logger } from "../../utils/logger";
 import { ITourSearchQuery } from "./tour.interface";
+import { Types } from "mongoose";
 
 const createTour = async (req: Request, res: Response) => {
   try {

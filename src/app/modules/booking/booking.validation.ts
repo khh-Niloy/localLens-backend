@@ -14,6 +14,6 @@ export const createBookingZodSchema = z.object({
 
 export const updateBookingStatusZodSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(BOOKING_STATUS, { errorMap: () => ({ message: "Invalid booking status" }) }),
+    status: z.nativeEnum(BOOKING_STATUS, { message: "Invalid booking status" }),
   })
 });
