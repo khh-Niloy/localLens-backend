@@ -6,6 +6,11 @@ A comprehensive tour booking and management system backend API built with Node.j
 
 LocalLens Backend is a RESTful API server that powers a tourism platform where local guides can create and manage tour listings, tourists can discover and book tours, and administrators can oversee the entire system. The backend handles authentication, tour management, booking workflows, payment processing, reviews, and wishlist functionality with role-based access control.
 
+## 🌐 Live URLs
+
+- **Backend API**: [https://local-lens-backend.vercel.app/](https://local-lens-backend.vercel.app/)
+- **Frontend Application**: [https://local-lens-frontend.vercel.app/](https://local-lens-frontend.vercel.app/)
+
 ## 🚀 Key Features
 
 - **Multi-Role User Management**: Support for Tourists, Guides, and Admins with role-specific features
