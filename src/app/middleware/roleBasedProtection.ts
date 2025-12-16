@@ -22,7 +22,7 @@ export const roleBasedProtection =
     const user = await User.findOne({ email: userInfoJWTAccessToken.email });
 
     if (!user) {
-      throw new Error("user found!");
+      throw new Error("user not found!");
     }
 
     if (
@@ -39,7 +39,7 @@ export const roleBasedProtection =
       throw new Error("user is blocked!");
     }
 
-    if (!Object.values(roles).includes(userInfoJWTAccessToken.role)) {
+    if (!roles.includes(userInfoJWTAccessToken.role)) {
       throw new Error("You are not permitted to view this route!!!");
     }
 

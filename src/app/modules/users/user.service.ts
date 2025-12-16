@@ -3,6 +3,7 @@ import { envVars } from "../../config/env";
 import { IUser, Roles } from "./user.interface";
 import { User } from "./user.model";
 import bcryptjs from "bcryptjs";
+import { jwtManagement } from "../../utils/jwtManagement";
 
 const createUserService = async (playLoad: Partial<IUser>) => {
   const { email, password, ...rest } = playLoad;
@@ -17,12 +18,27 @@ const createUserService = async (playLoad: Partial<IUser>) => {
     parseInt(envVars.BCRYPT_SALT_ROUND)
   );
 
-  const newCreatedUser = await User.create({
+  // Set default values for required fields
+  const userData = {
     email,
     password: hashedPassword,
+    language: rest.language || ["English"],
+    bio: rest.bio || "No bio provided",
+    image: rest.image || "https://via.placeholder.com/150",
     ...rest,
-  });
-  return newCreatedUser;
+  };
+
+  const newCreatedUser = await User.create(userData);
+
+  const jwtPayload = {
+    userId: newCreatedUser._id,
+    email: newCreatedUser.email,
+    role: newCreatedUser.role,
+  };
+
+  const { accessToken, refreshToken } = jwtManagement.createAccessAndRefreshToken(jwtPayload);
+
+  return { accessToken, refreshToken, user: newCreatedUser };
 };
 
 const updateUserService = async (
@@ -77,14 +93,88 @@ const getAllUserService = async () => {
   return { allUser, totalCount };
 };
 
+const getUsersByRoleService = async (role: Roles) => {
+  const users = await User.find({ role, isDeleted: false })
+    .select("-password")
+    .sort({ createdAt: -1 });
+  const totalCount = await User.countDocuments({ role, isDeleted: false });
+  return { users, totalCount };
+};
+
 const getProfileService = async (userInfo: JwtPayload) => {
   const profile = await User.findById(userInfo.userId).select("-password")
   return profile
 };
 
+const getPublicProfileService = async (userId: string) => {
+  const profile = await User.findById(userId).select("-password -isDeleted -isBlocked");
+  if (!profile) {
+    throw new Error("User not found");
+  }
+  return profile;
+};
+
+const updateProfileService = async (userInfo: JwtPayload, reqBody: Partial<IUser>) => {
+  const userId = userInfo.userId;
+  
+  // Users can only update their own profile
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Prevent users from updating sensitive fields
+  // Common fields + role-specific fields
+  const allowedFields = ['name', 'image', 'phone', 'address', 'bio', 'language'];
+  
+  // Add role-specific fields
+  if (user.role === Roles.GUIDE) {
+    allowedFields.push('expertise', 'dailyRate');
+  } else if (user.role === Roles.TOURIST) {
+    allowedFields.push('travelPreferences');
+  }
+  
+  const updateData: Partial<IUser> = {};
+  
+  for (const field of allowedFields) {
+    const fieldKey = field as keyof IUser;
+    if (reqBody[fieldKey] !== undefined) {
+      (updateData as any)[fieldKey] = reqBody[fieldKey];
+    }
+  }
+
+  const updatedProfile = await User.findByIdAndUpdate(
+    userId,
+    updateData,
+    { new: true, runValidators: true }
+  ).select("-password");
+
+  return updatedProfile;
+};
+
+const deleteUserService = async (userId: string) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Prevent deletion of admin users
+  if (user.role === Roles.ADMIN) {
+    throw new Error("Cannot delete admin users");
+  }
+
+  // Soft delete by setting isDeleted to true
+  await User.findByIdAndUpdate(userId, { isDeleted: true });
+  return { message: "User deleted successfully" };
+};
+
 export const userServices = {
   createUserService,
   getAllUserService,
+  getUsersByRoleService,
   updateUserService,
-  getProfileService
+  getProfileService,
+  getPublicProfileService,
+  updateProfileService,
+  deleteUserService
 };

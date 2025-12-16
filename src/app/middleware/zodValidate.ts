@@ -5,10 +5,26 @@ export const validateSchema =
   (zodSchema: ZodObject<any>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if(req.body.data){
-        req.body = JSON.parse(req.body?.data)
+      // Handle multipart form data
+      if(req.body?.data){
+        req.body = JSON.parse(req.body.data)
       }
-      req.body = await zodSchema.parseAsync(req.body)
+      
+      // Ensure req.body exists, if not set it to empty object
+      if (!req.body) {
+        req.body = {};
+      }
+      
+      // Validate the request object (body, params, query)
+      const validatedData = await zodSchema.parseAsync({
+        body: req.body,
+        params: req.params,
+        query: req.query
+      });
+      
+      // Update req.body with validated data
+      req.body = validatedData.body;
+      
       next();
     } catch (error) {
       next(error);

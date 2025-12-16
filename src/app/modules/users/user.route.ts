@@ -1,19 +1,31 @@
-import { NextFunction, Router } from "express";
+import { Router } from "express";
 import { userController } from "./user.controller";
 import { Roles } from "./user.interface";
 import { roleBasedProtection } from "../../middleware/roleBasedProtection";
 import { validateSchema } from "../../middleware/zodValidate";
-import { userCreateZodSchema } from "./user.validation";
+import { userCreateZodSchema, userUpdateZodSchema } from "./user.validation";
+import { profileUpload } from "../../config/multer.config";
 
 export const userRoutes = Router();
 
+// Public routes
+userRoutes.get("/enums", userController.getUserEnums); // Get roles and statuses
+userRoutes.get("/profile/:id", userController.getPublicProfile);
+
+// Protected routes
 userRoutes.get(
-  "/all-user",
-  roleBasedProtection(Roles.ADMIN),
-  userController.getAllUser
+  "/profile",
+  roleBasedProtection(...Object.values(Roles)),
+  userController.getProfile
 );
 
-userRoutes.get("/profile", roleBasedProtection(...Object.values(Roles)), userController.getProfile)
+userRoutes.patch(
+  "/profile",
+  roleBasedProtection(...Object.values(Roles)),
+  profileUpload.single('image'), // Handle single file upload for profile picture
+  validateSchema(userUpdateZodSchema),
+  userController.updateProfile
+);
 
 userRoutes.post(
   "/register",
@@ -21,8 +33,27 @@ userRoutes.post(
   userController.createUser
 );
 
+// Admin routes
+userRoutes.get(
+  "/admin/all",
+  roleBasedProtection(Roles.ADMIN),
+  userController.getAllUser
+);
+
+userRoutes.get(
+  "/admin/role/:role",
+  roleBasedProtection(Roles.ADMIN),
+  userController.getUsersByRole
+);
+
 userRoutes.patch(
-  "/:id",
-  roleBasedProtection(...Object.values(Roles)),
+  "/admin/:id",
+  roleBasedProtection(Roles.ADMIN),
   userController.updateUser
+);
+
+userRoutes.delete(
+  "/admin/:id",
+  roleBasedProtection(Roles.ADMIN),
+  userController.deleteUser
 );
