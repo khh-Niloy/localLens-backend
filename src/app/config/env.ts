@@ -11,6 +11,8 @@ interface IEnvVars {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES: string;
   CORS_FRONTEND_URL: string;
+  ADMIN_EMAIL: string;
+  ADMIN_PASSWORD: string;
 }
 
 const loadEnvVars = (): IEnvVars => {
@@ -24,6 +26,8 @@ const loadEnvVars = (): IEnvVars => {
     "JWT_REFRESH_SECRET",
     "JWT_REFRESH_EXPIRES",  
     "CORS_FRONTEND_URL",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
   ];
   requiredEnvVar.forEach((key) => {
     if (!process.env[key]) {
@@ -40,6 +44,8 @@ const loadEnvVars = (): IEnvVars => {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET as string,
   JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES as string,
   CORS_FRONTEND_URL: process.env.CORS_FRONTEND_URL as string,
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL as string,
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD as string,
   };
 };
 
