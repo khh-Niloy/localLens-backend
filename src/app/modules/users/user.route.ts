@@ -22,7 +22,7 @@ userRoutes.get(
 userRoutes.patch(
   "/profile",
   roleBasedProtection(...Object.values(Roles)),
-  profileUpload.single('image'), // Handle single file upload for profile picture
+  profileUpload.single('image'),
   validateSchema(userUpdateZodSchema),
   userController.updateProfile
 );

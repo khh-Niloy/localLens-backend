@@ -1,4 +1,5 @@
 import { createSlug } from "../../utils/createSlug";
+import { Booking } from "../booking/booking.model";
 import { ITourListing, ITourSearchQuery, TOUR_STATUS } from "./tour.interface";
 import { Tour } from "./tour.model";
 import { Types } from "mongoose";
@@ -228,8 +229,6 @@ const getMyToursService = async (userId: string) => {
 };
 
 const getAllToursForAdminService = async () => {
-  const { Booking } = await import("../booking/booking.model");
-  
   const tours = await Tour.find()
     .populate('guideId', 'name email image phone')
     .sort({ createdAt: -1 });

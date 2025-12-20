@@ -33,7 +33,7 @@ const createBookingService = async (
       status: BOOKING_STATUS.PENDING,
       totalAmount: totalCost,
       numberOfGuests: numberOfGuests,
-      ...payload
+      ...payload,
     });
 
     const updatedBooking = await Booking.findById(newBooking._id)
@@ -49,7 +49,10 @@ const createBookingService = async (
 
 const getMyBookingsService = async (userId: string) => {
   const bookings = await Booking.find({ userId })
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("guideId", "name email image phone")
     .populate("payment", "status transactionId amount")
     .sort({ createdAt: -1 });
@@ -58,15 +61,18 @@ const getMyBookingsService = async (userId: string) => {
 };
 
 const getUpcomingBookingsService = async (guideId: string) => {
-  const today = new Date().toISOString().split('T')[0];
-  
+  const today = new Date().toISOString().split("T")[0];
+
   const bookings = await Booking.find({
     guideId,
     status: { $in: [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED] },
-    bookingDate: { $gte: today }
+    bookingDate: { $gte: today },
   })
     .populate("userId", "name email phone image")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("payment", "status transactionId amount")
     .sort({ bookingDate: 1, bookingTime: 1 });
 
@@ -76,10 +82,13 @@ const getUpcomingBookingsService = async (guideId: string) => {
 const getPendingBookingsService = async (guideId: string) => {
   const bookings = await Booking.find({
     guideId,
-    status: BOOKING_STATUS.PENDING
+    status: BOOKING_STATUS.PENDING,
   })
     .populate("userId", "name email phone image")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("payment", "status transactionId amount")
     .sort({ createdAt: -1 });
 
@@ -88,10 +97,13 @@ const getPendingBookingsService = async (guideId: string) => {
 
 const getAllGuideBookingsService = async (guideId: string) => {
   const bookings = await Booking.find({
-    guideId
+    guideId,
   })
     .populate("userId", "name email phone image address")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("payment", "status transactionId amount")
     .sort({ createdAt: -1 });
 
@@ -103,8 +115,7 @@ const updateBookingStatusService = async (
   status: BOOKING_STATUS,
   userId: string
 ) => {
-  const booking = await Booking.findById(bookingId)
-    .populate("guideId", "_id");
+  const booking = await Booking.findById(bookingId).populate("guideId", "_id");
 
   if (!booking) {
     throw new Error("Booking not found");
@@ -127,7 +138,10 @@ const updateBookingStatusService = async (
 
   // Only allow CONFIRMED or CANCELLED from PENDING
   if (booking.status === BOOKING_STATUS.PENDING) {
-    if (status !== BOOKING_STATUS.CONFIRMED && status !== BOOKING_STATUS.CANCELLED) {
+    if (
+      status !== BOOKING_STATUS.CONFIRMED &&
+      status !== BOOKING_STATUS.CANCELLED
+    ) {
       throw new Error("Can only confirm or cancel a pending booking");
     }
   }
@@ -137,7 +151,7 @@ const updateBookingStatusService = async (
     if (status === BOOKING_STATUS.COMPLETED) {
       // When marking as completed, create payment record for tourist to pay
       const existingPayment = await Payment.findOne({ bookingId });
-      
+
       if (!existingPayment) {
         const transactionId = getTransactionId();
         const payment = await Payment.create({
@@ -146,7 +160,7 @@ const updateBookingStatusService = async (
           transactionId,
           amount: booking.totalAmount,
         });
-        
+
         // Update booking with payment reference
         const updatedBooking = await Booking.findByIdAndUpdate(
           bookingId,
@@ -154,7 +168,10 @@ const updateBookingStatusService = async (
           { new: true }
         )
           .populate("userId", "name email phone image address")
-          .populate("tourId", "title images location tourFee maxDuration category slug")
+          .populate(
+            "tourId",
+            "title images location tourFee maxDuration category slug"
+          )
           .populate("guideId", "name email image phone")
           .populate("payment", "status transactionId amount");
 
@@ -171,7 +188,10 @@ const updateBookingStatusService = async (
     { new: true }
   )
     .populate("userId", "name email phone image")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("guideId", "name email image phone")
     .populate("payment", "status transactionId amount");
 
@@ -181,7 +201,10 @@ const updateBookingStatusService = async (
 const getAllBookingsService = async () => {
   const bookings = await Booking.find()
     .populate("userId", "name email phone image")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("guideId", "name email image phone")
     .populate("payment", "status transactionId amount")
     .sort({ createdAt: -1 });
@@ -192,7 +215,10 @@ const getAllBookingsService = async () => {
 const getBookingByIdService = async (bookingId: string, userId: string) => {
   const booking = await Booking.findById(bookingId)
     .populate("userId", "name email phone image")
-    .populate("tourId", "title images location tourFee maxDuration category slug")
+    .populate(
+      "tourId",
+      "title images location tourFee maxDuration category slug"
+    )
     .populate("guideId", "name email image phone")
     .populate("payment", "status transactionId amount");
 
@@ -203,7 +229,7 @@ const getBookingByIdService = async (bookingId: string, userId: string) => {
   // Verify user has access to this booking
   const bookingUserId = (booking.userId as any)?._id?.toString();
   const bookingGuideId = (booking.guideId as any)?._id?.toString();
-  
+
   if (bookingUserId !== userId && bookingGuideId !== userId) {
     throw new Error("You are not authorized to view this booking");
   }
@@ -211,7 +237,10 @@ const getBookingByIdService = async (bookingId: string, userId: string) => {
   return booking;
 };
 
-const initiatePaymentForCompletedBooking = async (bookingId: string, userId: string) => {
+const initiatePaymentForCompletedBooking = async (
+  bookingId: string,
+  userId: string
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -237,17 +266,19 @@ const initiatePaymentForCompletedBooking = async (bookingId: string, userId: str
 
     // Check if payment already exists
     let payment = booking.payment;
-    
+
     if (!payment) {
       // Create payment record
       const transactionId = getTransactionId();
       const newPayment = await Payment.create(
-        [{
-          bookingId,
-          status: PAYMENT_STATUS.UNPAID,
-          transactionId,
-          amount: booking.totalAmount,
-        }],
+        [
+          {
+            bookingId,
+            status: PAYMENT_STATUS.UNPAID,
+            transactionId,
+            amount: booking.totalAmount,
+          },
+        ],
         { session }
       );
 
@@ -278,7 +309,8 @@ const initiatePaymentForCompletedBooking = async (bookingId: string, userId: str
       phoneNumber: userPhoneNumber,
       address: userAddress,
       amount: booking.totalAmount,
-      transactionId: (paymentRecord as any)?.transactionId || getTransactionId(),
+      transactionId:
+        (paymentRecord as any)?.transactionId || getTransactionId(),
     };
 
     const sslPayment = await sslService.sslPaymentInit(sslPayload);

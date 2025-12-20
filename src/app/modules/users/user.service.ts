@@ -8,7 +8,9 @@ import { jwtManagement } from "../../utils/jwtManagement";
 const createUserService = async (playLoad: Partial<IUser>) => {
   const { email, password, ...rest } = playLoad;
 
-  const isUserExist = await User.findOne({ email });
+  const userEmail = email?.toLowerCase().trim();
+
+  const isUserExist = await User.findOne({ email: userEmail });
   if (isUserExist) {
     throw new Error("User already exist");
   }
@@ -18,17 +20,14 @@ const createUserService = async (playLoad: Partial<IUser>) => {
     parseInt(envVars.BCRYPT_SALT_ROUND)
   );
 
-  // Set default values for required fields
   const userData = {
-    email,
+    email: userEmail,
     password: hashedPassword,
-    language: rest.language || ["English"],
-    bio: rest.bio || "No bio provided",
-    image: rest.image || "https://via.placeholder.com/150",
     ...rest,
   };
 
   const newCreatedUser = await User.create(userData);
+  const userWithoutPassword = await User.findById(newCreatedUser._id);
 
   const jwtPayload = {
     userId: newCreatedUser._id,
@@ -36,9 +35,10 @@ const createUserService = async (playLoad: Partial<IUser>) => {
     role: newCreatedUser.role,
   };
 
-  const { accessToken, refreshToken } = jwtManagement.createAccessAndRefreshToken(jwtPayload);
+  const { accessToken, refreshToken } =
+    jwtManagement.createAccessAndRefreshToken(jwtPayload);
 
-  return { accessToken, refreshToken, user: newCreatedUser };
+  return { accessToken, refreshToken, user: userWithoutPassword };
 };
 
 const updateUserService = async (
@@ -46,13 +46,6 @@ const updateUserService = async (
   payload: JwtPayload,
   reqBody: Partial<IUser>
 ) => {
-
-  if ( reqBody.role !== undefined && [Roles.TOURIST, Roles.GUIDE].includes(reqBody.role)) {
-    if(payload.userId !== userId){
-      throw new Error("you are not authorized to change others info");
-    }
-  }
-
   if (
     payload.role &&
     reqBody.role !== undefined &&
@@ -66,9 +59,7 @@ const updateUserService = async (
     reqBody.role !== undefined &&
     [Roles.TOURIST, Roles.GUIDE].includes(reqBody.role)
   ) {
-    throw new Error(
-      "you are not authorized to make this change"
-    );
+    throw new Error("you are not authorized to make this change");
   }
 
   const user = await User.findById(userId);
@@ -77,7 +68,7 @@ const updateUserService = async (
     throw new Error("user not found!");
   }
 
-  if(payload.role == Roles.ADMIN && user.role == Roles.ADMIN){
+  if (payload.role == Roles.ADMIN && user.role == Roles.ADMIN) {
     throw new Error("you can not update super admin info");
   }
 
@@ -88,54 +79,62 @@ const updateUserService = async (
 };
 
 const getAllUserService = async () => {
-  const allUser = await User.find({});
-  const totalCount = await User.countDocuments();
+  const [allUser, totalCount] = await Promise.all([
+    User.find({ isDeleted: false }),
+    User.countDocuments({ isDeleted: false }),
+  ]);
   return { allUser, totalCount };
 };
 
 const getUsersByRoleService = async (role: Roles) => {
-  const users = await User.find({ role, isDeleted: false })
-    .select("-password")
-    .sort({ createdAt: -1 });
-  const totalCount = await User.countDocuments({ role, isDeleted: false });
+  const [users, totalCount] = await Promise.all([
+    User.find({ role, isDeleted: false }).sort({ createdAt: -1 }),
+    User.countDocuments({ role, isDeleted: false }),
+  ]);
   return { users, totalCount };
 };
 
 const getProfileService = async (userInfo: JwtPayload) => {
-  const profile = await User.findById(userInfo.userId).select("-password")
-  return profile
+  const profile = await User.findById(userInfo.userId);
+  return profile;
 };
 
 const getPublicProfileService = async (userId: string) => {
-  const profile = await User.findById(userId).select("-password -isDeleted -isBlocked");
+  const profile = await User.findById(userId).select("-isDeleted -isBlocked");
   if (!profile) {
     throw new Error("User not found");
   }
   return profile;
 };
 
-const updateProfileService = async (userInfo: JwtPayload, reqBody: Partial<IUser>) => {
+const updateProfileService = async (
+  userInfo: JwtPayload,
+  reqBody: Partial<IUser>
+) => {
   const userId = userInfo.userId;
-  
-  // Users can only update their own profile
+
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
   }
 
-  // Prevent users from updating sensitive fields
-  // Common fields + role-specific fields
-  const allowedFields = ['name', 'image', 'phone', 'address', 'bio', 'language'];
-  
-  // Add role-specific fields
+  const allowedFields = [
+    "name",
+    "image",
+    "phone",
+    "address",
+    "bio",
+    "language",
+  ];
+
   if (user.role === Roles.GUIDE) {
-    allowedFields.push('expertise', 'dailyRate');
+    allowedFields.push("expertise", "dailyRate");
   } else if (user.role === Roles.TOURIST) {
-    allowedFields.push('travelPreferences');
+    allowedFields.push("travelPreferences");
   }
-  
+
   const updateData: Partial<IUser> = {};
-  
+
   for (const field of allowedFields) {
     const fieldKey = field as keyof IUser;
     if (reqBody[fieldKey] !== undefined) {
@@ -143,11 +142,10 @@ const updateProfileService = async (userInfo: JwtPayload, reqBody: Partial<IUser
     }
   }
 
-  const updatedProfile = await User.findByIdAndUpdate(
-    userId,
-    updateData,
-    { new: true, runValidators: true }
-  ).select("-password");
+  const updatedProfile = await User.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  });
 
   return updatedProfile;
 };
@@ -158,12 +156,10 @@ const deleteUserService = async (userId: string) => {
     throw new Error("User not found");
   }
 
-  // Prevent deletion of admin users
   if (user.role === Roles.ADMIN) {
     throw new Error("Cannot delete admin users");
   }
 
-  // Soft delete by setting isDeleted to true
   await User.findByIdAndUpdate(userId, { isDeleted: true });
   return { message: "User deleted successfully" };
 };
@@ -176,5 +172,5 @@ export const userServices = {
   getProfileService,
   getPublicProfileService,
   updateProfileService,
-  deleteUserService
+  deleteUserService,
 };
