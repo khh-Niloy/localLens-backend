@@ -33,10 +33,12 @@ const reviewSchema = new Schema<IReview>(
       type: String,
       required: true,
       maxlength: 1000,
+      trim: true,
     },
     helpful: {
       type: Number,
       default: 0,
+      min: 0,
     },
   },
   {
@@ -44,8 +46,19 @@ const reviewSchema = new Schema<IReview>(
   }
 );
 
-// Ensure one review per booking
+// Unique constraint - one review per booking
 reviewSchema.index({ bookingId: 1 }, { unique: true });
+
+// Single field indexes
+reviewSchema.index({ userId: 1 });
+reviewSchema.index({ tourId: 1 });
+reviewSchema.index({ guideId: 1 });
+reviewSchema.index({ rating: -1 });
+
+// Compound indexes for common queries
+reviewSchema.index({ tourId: 1, createdAt: -1 });
+reviewSchema.index({ guideId: 1, createdAt: -1 });
+reviewSchema.index({ userId: 1, createdAt: -1 });
 
 export const Review = model<IReview>("Review", reviewSchema);
 

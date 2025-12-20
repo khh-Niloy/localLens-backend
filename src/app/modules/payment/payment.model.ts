@@ -16,11 +16,14 @@ const paymentSchema = new Schema<IPayment>({
     status: {
         type: String,
         enum: Object.values(PAYMENT_STATUS),
-        default: PAYMENT_STATUS.UNPAID
+        default: PAYMENT_STATUS.UNPAID,
+        required: true,
     },
     amount: {
         type: Number,
         required: true,
+        min: 0,
+        max: 10000000,
     },
     paymentGatewayData: {
         type: Schema.Types.Mixed
@@ -31,6 +34,13 @@ const paymentSchema = new Schema<IPayment>({
 }, {
     timestamps: true, 
     versionKey: false
-})
+});
 
-export const Payment = model<IPayment>("Payment", paymentSchema)
+// Single field indexes (unique already creates indexes for bookingId and transactionId)
+paymentSchema.index({ status: 1 });
+paymentSchema.index({ paidAt: -1 });
+
+// Compound indexes
+paymentSchema.index({ status: 1, paidAt: -1 });
+
+export const Payment = model<IPayment>("Payment", paymentSchema);

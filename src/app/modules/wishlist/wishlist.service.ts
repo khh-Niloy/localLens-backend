@@ -13,7 +13,7 @@ const getUserWishlistService = async (userId: string) => {
         select: 'name image'
       }
     })
-    .sort({ addedAt: -1 });
+    .sort({ createdAt: -1 });
 
   return wishlist;
 };
