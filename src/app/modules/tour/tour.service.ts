@@ -188,6 +188,12 @@ const deleteTourService = async (tourId: string, userId: string) => {
   return { message: "Tour deleted successfully" };
 };
 
+const getAllToursForAdminService = async () => {
+  const tours = await Tour.find()
+    .populate('guideId', 'name email image')
+    .sort({ createdAt: -1 });
+  return tours;
+};
 
 export const tourServices = {
   createTourService,
@@ -198,4 +204,5 @@ export const tourServices = {
   deleteTourService,
   getGuideMyToursService,
   getTouristMyToursService,
+  getAllToursForAdminService,
 };

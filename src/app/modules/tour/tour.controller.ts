@@ -194,6 +194,20 @@ const deleteTour = async (req: Request, res: Response) => {
   }
 };
 
+const getAllToursForAdmin = async (req: Request, res: Response) => {
+  try {
+    const tours = await tourServices.getAllToursForAdminService();
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Admin: All tours fetched successfully",
+      data: tours,
+    });
+  } catch (error) {
+    logger.log("Error fetching admin tours:", error);
+    responseManager.error(res, error as Error, 500);
+  }
+};
 
 export const TourController = {
   createTour,
@@ -205,4 +219,5 @@ export const TourController = {
   getGuideMyTours,
   getTouristMyTours,
   getTourEnums,
+  getAllToursForAdmin,
 };

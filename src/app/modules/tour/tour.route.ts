@@ -53,3 +53,10 @@ tourRoutes.delete(
   roleBasedProtection(Roles.GUIDE, Roles.ADMIN),
   TourController.deleteTour
 );
+
+// Admin routes
+tourRoutes.get(
+  "/admin/all-tours",
+  roleBasedProtection(Roles.ADMIN),
+  TourController.getAllToursForAdmin
+);

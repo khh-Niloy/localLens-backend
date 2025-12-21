@@ -41,59 +41,6 @@ const createUserService = async (playLoad: Partial<IUser>) => {
   return { accessToken, refreshToken, user: userWithoutPassword };
 };
 
-const updateUserService = async (
-  userId: string,
-  payload: JwtPayload,
-  reqBody: Partial<IUser>
-) => {
-  if (
-    payload.role &&
-    reqBody.role !== undefined &&
-    [Roles.TOURIST, Roles.GUIDE].includes(reqBody.role)
-  ) {
-    throw new Error("you are not authorized to change role");
-  }
-
-  if (
-    (reqBody?.isActive || reqBody?.isDeleted) &&
-    reqBody.role !== undefined &&
-    [Roles.TOURIST, Roles.GUIDE].includes(reqBody.role)
-  ) {
-    throw new Error("you are not authorized to make this change");
-  }
-
-  const user = await User.findById(userId);
-
-  if (!user) {
-    throw new Error("user not found!");
-  }
-
-  if (payload.role == Roles.ADMIN && user.role == Roles.ADMIN) {
-    throw new Error("you can not update super admin info");
-  }
-
-  const updateUser = await User.findByIdAndUpdate(userId, reqBody, {
-    new: true,
-  });
-  return updateUser;
-};
-
-const getAllUserService = async () => {
-  const [allUser, totalCount] = await Promise.all([
-    User.find({ isDeleted: false }),
-    User.countDocuments({ isDeleted: false }),
-  ]);
-  return { allUser, totalCount };
-};
-
-const getUsersByRoleService = async (role: Roles) => {
-  const [users, totalCount] = await Promise.all([
-    User.find({ role, isDeleted: false }).sort({ createdAt: -1 }),
-    User.countDocuments({ role, isDeleted: false }),
-  ]);
-  return { users, totalCount };
-};
-
 const getProfileService = async (userInfo: JwtPayload) => {
   const profile = await User.findById(userInfo.userId);
   return profile;
@@ -150,27 +97,15 @@ const updateProfileService = async (
   return updatedProfile;
 };
 
-const deleteUserService = async (userId: string) => {
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  if (user.role === Roles.ADMIN) {
-    throw new Error("Cannot delete admin users");
-  }
-
-  await User.findByIdAndUpdate(userId, { isDeleted: true });
-  return { message: "User deleted successfully" };
+const getAllUsersService = async () => {
+    const users = await User.find({ isDeleted: false }).sort({ createdAt: -1 });
+    return users;
 };
 
 export const userServices = {
   createUserService,
-  getAllUserService,
-  getUsersByRoleService,
-  updateUserService,
   getProfileService,
   getPublicProfileService,
   updateProfileService,
-  deleteUserService,
+  getAllUsersService,
 };

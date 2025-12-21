@@ -32,28 +32,9 @@ userRoutes.patch(
   userController.updateProfile
 );
 
-
 // Admin routes
 userRoutes.get(
-  "/admin/all",
+  "/admin/all-users",
   roleBasedProtection(Roles.ADMIN),
-  userController.getAllUser
-);
-
-userRoutes.get(
-  "/admin/role/:role",
-  roleBasedProtection(Roles.ADMIN),
-  userController.getUsersByRole
-);
-
-userRoutes.patch(
-  "/admin/:id",
-  roleBasedProtection(Roles.ADMIN),
-  userController.updateUser
-);
-
-userRoutes.delete(
-  "/admin/:id",
-  roleBasedProtection(Roles.ADMIN),
-  userController.deleteUser
+  userController.getAllUsers
 );

@@ -26,71 +26,6 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.params.id;
-    const payload = req.user;
-    const reqBody = req.body;
-    const updatedUserInfo = await userServices.updateUserService(
-      userId,
-      payload as JwtPayload,
-      reqBody
-    );
-
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "user info updated",
-      data: updatedUserInfo,
-    });
-  } catch (err) {
-    console.log(err);
-    next(err);
-  }
-};
-
-const getAllUser = async (req: Request, res: Response) => {
-  try {
-    const { allUser, totalCount } = await userServices.getAllUserService();
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "all user retreived",
-      meta: totalCount,
-      data: allUser,
-    });
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const getUsersByRole = async (req: Request, res: Response) => {
-  try {
-    const { role } = req.params;
-    const { Roles } = await import("./user.interface");
-
-    if (
-      !Object.values(Roles).includes(role as (typeof Roles)[keyof typeof Roles])
-    ) {
-      return responseManager.error(res, new Error("Invalid role"), 400);
-    }
-
-    const { users, totalCount } = await userServices.getUsersByRoleService(
-      role as (typeof Roles)[keyof typeof Roles]
-    );
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: `${role} users retrieved successfully`,
-      meta: totalCount,
-      data: users,
-    });
-  } catch (error) {
-    console.log(error);
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
 const getProfile = async (req: Request, res: Response) => {
   try {
     const userInfo = req.user;
@@ -165,22 +100,6 @@ const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-const deleteUser = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    await userServices.deleteUserService(id);
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "User deleted successfully",
-      data: null,
-    });
-  } catch (error) {
-    console.log(error);
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
 const getUserEnums = async (req: Request, res: Response) => {
   try {
     const { Roles, IisActive } = await import("./user.interface");
@@ -200,14 +119,26 @@ const getUserEnums = async (req: Request, res: Response) => {
   }
 };
 
+const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await userServices.getAllUsersService();
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "All users retrieved successfully",
+      data: users,
+    });
+  } catch (error) {
+    console.log(error);
+    responseManager.error(res, error as Error, 500);
+  }
+};
+
 export const userController = {
   createUser,
-  getAllUser,
-  getUsersByRole,
-  updateUser,
   getProfile,
   getPublicProfile,
   updateProfile,
-  deleteUser,
   getUserEnums,
+  getAllUsers,
 };

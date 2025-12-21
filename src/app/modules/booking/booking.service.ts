@@ -69,46 +69,12 @@ const getMyBookingsService = async (userId: string, role: string) => {
   return bookings;
 };
 
-const getUpcomingBookingsService = async (guideId: string) => {
-  const today = new Date().toISOString().split("T")[0];
-
-  const bookings = await Booking.find({
-    guideId,
-    status: { $in: [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED] },
-    bookingDate: { $gte: today },
-  })
-    .populate("userId", "name email phone image")
-    .populate(
-      "tourId",
-      "title images location tourFee maxDuration category slug"
-    )
-    .populate("payment", "status transactionId amount")
-    .sort({ bookingDate: 1, bookingTime: 1 });
-
-  return bookings;
-};
-
 const getPendingBookingsService = async (guideId: string) => {
   const bookings = await Booking.find({
     guideId,
     status: BOOKING_STATUS.PENDING,
   })
     .populate("userId", "name email phone image")
-    .populate(
-      "tourId",
-      "title images location tourFee maxDuration category slug"
-    )
-    .populate("payment", "status transactionId amount")
-    .sort({ createdAt: -1 });
-
-  return bookings;
-};
-
-const getAllGuideBookingsService = async (guideId: string) => {
-  const bookings = await Booking.find({
-    guideId,
-  })
-    .populate("userId", "name email phone image address")
     .populate(
       "tourId",
       "title images location tourFee maxDuration category slug"
@@ -207,45 +173,6 @@ const updateBookingStatusService = async (
   return updatedBooking;
 };
 
-const getAllBookingsService = async () => {
-  const bookings = await Booking.find()
-    .populate("userId", "name email phone image")
-    .populate(
-      "tourId",
-      "title images location tourFee maxDuration category slug"
-    )
-    .populate("guideId", "name email image phone")
-    .populate("payment", "status transactionId amount")
-    .sort({ createdAt: -1 });
-
-  return bookings;
-};
-
-const getBookingByIdService = async (bookingId: string, userId: string) => {
-  const booking = await Booking.findById(bookingId)
-    .populate("userId", "name email phone image")
-    .populate(
-      "tourId",
-      "title images location tourFee maxDuration category slug"
-    )
-    .populate("guideId", "name email image phone")
-    .populate("payment", "status transactionId amount");
-
-  if (!booking) {
-    throw new Error("Booking not found");
-  }
-
-  // Verify user has access to this booking
-  const bookingUserId = (booking.userId as any)?._id?.toString();
-  const bookingGuideId = (booking.guideId as any)?._id?.toString();
-
-  if (bookingUserId !== userId && bookingGuideId !== userId) {
-    throw new Error("You are not authorized to view this booking");
-  }
-
-  return booking;
-};
-
 const initiatePaymentForCompletedBooking = async (
   bookingId: string,
   userId: string
@@ -338,14 +265,25 @@ const initiatePaymentForCompletedBooking = async (
   }
 };
 
+const getAllBookingsService = async () => {
+    const bookings = await Booking.find()
+      .populate("userId", "name email phone image")
+      .populate(
+        "tourId",
+        "title images location tourFee maxDuration category slug"
+      )
+      .populate("guideId", "name email image phone")
+      .populate("payment", "status transactionId amount")
+      .sort({ createdAt: -1 });
+  
+    return bookings;
+  };
+
 export const bookingServices = {
   createBookingService,
   getMyBookingsService,
-  getUpcomingBookingsService,
   getPendingBookingsService,
-  getAllGuideBookingsService,
   updateBookingStatusService,
-  getAllBookingsService,
-  getBookingByIdService,
   initiatePaymentForCompletedBooking,
+  getAllBookingsService,
 };
