@@ -17,7 +17,7 @@ bookingRoutes.post(
 
 bookingRoutes.get(
   "/my-bookings",
-  roleBasedProtection(Roles.TOURIST),
+  roleBasedProtection(Roles.TOURIST, Roles.GUIDE),
   bookingController.getMyBookings
 );
 

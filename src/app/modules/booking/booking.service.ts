@@ -47,12 +47,21 @@ const createBookingService = async (
   }
 };
 
-const getMyBookingsService = async (userId: string) => {
-  const bookings = await Booking.find({ userId })
+const getMyBookingsService = async (userId: string, role: string) => {
+  let query: any = {};
+
+  if (role === "TOURIST") {
+    query = { userId };
+  } else if (role === "GUIDE") {
+    query = { guideId: userId };
+  }
+
+  const bookings = await Booking.find(query)
     .populate(
       "tourId",
       "title images location tourFee maxDuration category slug"
     )
+    .populate("userId", "name email phone image")
     .populate("guideId", "name email image phone")
     .populate("payment", "status transactionId amount")
     .sort({ createdAt: -1 });

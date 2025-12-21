@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Roles } from "./user.interface";
+import { parseArrayField } from "../../utils/parseFormData";
 
 const phoneRegex =
   /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
@@ -50,9 +51,9 @@ export const userUpdateZodSchema = z.object({
       .max(1000, "Bio must be less than 1000 characters")
       .optional()
       .or(z.literal("")),
-    language: z.array(z.string()).optional(),
+    language: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
     // Guide-specific fields
-    expertise: z.array(z.string()).optional(),
+    expertise: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
     dailyRate: z
       .union([z.number(), z.string()])
       .optional()
@@ -72,6 +73,6 @@ export const userUpdateZodSchema = z.object({
         return val;
       }),
     // Tourist-specific fields
-    travelPreferences: z.array(z.string()).optional(),
+    travelPreferences: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
   }),
 });

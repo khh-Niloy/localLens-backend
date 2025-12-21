@@ -10,7 +10,12 @@ export const userRoutes = Router();
 
 // Public routes
 userRoutes.get("/enums", userController.getUserEnums); // Get roles and statuses
-userRoutes.get("/profile/:id", userController.getPublicProfile);
+
+userRoutes.post(
+  "/register",
+  validateSchema(userCreateZodSchema),
+  userController.createUser
+);
 
 // Protected routes
 userRoutes.get(
@@ -27,11 +32,6 @@ userRoutes.patch(
   userController.updateProfile
 );
 
-userRoutes.post(
-  "/register",
-  validateSchema(userCreateZodSchema),
-  userController.createUser
-);
 
 // Admin routes
 userRoutes.get(

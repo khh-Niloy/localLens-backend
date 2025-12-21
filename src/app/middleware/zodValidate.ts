@@ -5,26 +5,41 @@ export const validateSchema =
   (zodSchema: ZodObject<any>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Handle multipart form data
-      if(req.body?.data){
-        req.body = JSON.parse(req.body.data)
+      // Handle multipart form data if it's sent as a single 'data' field
+      if (req.body?.data) {
+        try {
+          const parsedData = JSON.parse(req.body.data);
+          req.body = { ...req.body, ...parsedData };
+          // Optionally delete req.body.data if you don't want it sticking around
+          // delete req.body.data;
+        } catch (error) {
+          // If JSON.parse fails, we keep req.body as is
+        }
       }
-      
-      // Ensure req.body exists, if not set it to empty object
+
+      // Ensure req.body exists
       if (!req.body) {
         req.body = {};
       }
-      
-      // Validate the request object (body, params, query)
+
+      // Validate the request object
       const validatedData = await zodSchema.parseAsync({
         body: req.body,
         params: req.params,
-        query: req.query
+        query: req.query,
       });
-      
-      // Update req.body with validated data
-      req.body = validatedData.body;
-      
+
+      // Update request objects with validated and transformed data
+      if (validatedData.body) {
+        req.body = validatedData.body;
+      }
+      if (validatedData.params) {
+        req.params = validatedData.params as any;
+      }
+      if (validatedData.query) {
+        req.query = validatedData.query as any;
+      }
+
       next();
     } catch (error) {
       next(error);

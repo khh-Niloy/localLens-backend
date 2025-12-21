@@ -7,15 +7,6 @@ import { cookiesManagement } from "../../utils/cookiesManagement";
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userData = { ...req.body };
-    if (userData.language && typeof userData.language === "string") {
-      try {
-        userData.language = JSON.parse(userData.language);
-      } catch {
-        userData.language = userData.language
-          .split(",")
-          .map((lang: string) => lang.trim());
-      }
-    }
 
     const newCreatedUser = await userServices.createUserService(userData);
     cookiesManagement.setCookie(
@@ -144,23 +135,6 @@ const updateProfile = async (req: Request, res: Response) => {
       file ? { path: file.path, fieldname: file.fieldname } : "No file"
     );
 
-    const parseArrayField = (field: any): any[] => {
-      if (!field) return [];
-      if (Array.isArray(field)) return field;
-      if (typeof field === "string") {
-        try {
-          const parsed = JSON.parse(field);
-          return Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-          return field
-            .split(",")
-            .map((item: string) => item.trim())
-            .filter(Boolean);
-        }
-      }
-      return [];
-    };
-
     const reqBody: any = {
       ...req.body,
     };
@@ -168,16 +142,6 @@ const updateProfile = async (req: Request, res: Response) => {
     if (file && file.path) {
       reqBody.image = file.path;
       console.log("Setting image URL:", file.path);
-    }
-
-    if (reqBody.language) {
-      reqBody.language = parseArrayField(reqBody.language);
-    }
-    if (reqBody.expertise) {
-      reqBody.expertise = parseArrayField(reqBody.expertise);
-    }
-    if (reqBody.travelPreferences) {
-      reqBody.travelPreferences = parseArrayField(reqBody.travelPreferences);
     }
 
     if (reqBody.dailyRate && typeof reqBody.dailyRate === "string") {
