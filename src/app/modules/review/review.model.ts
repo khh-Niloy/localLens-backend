@@ -31,14 +31,9 @@ const reviewSchema = new Schema<IReview>(
     },
     comment: {
       type: String,
-      required: true,
+      required: false,
       maxlength: 1000,
       trim: true,
-    },
-    helpful: {
-      type: Number,
-      default: 0,
-      min: 0,
     },
   },
   {

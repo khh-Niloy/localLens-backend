@@ -44,7 +44,7 @@ const getNewAccessTokenService = async (refreshToken: string) => {
 };
 
 const getMeService = async (payload: JwtPayload) => {
-  const user = await User.findById(payload.userId).select("name email role phone address image");
+  const user = await User.findById(payload.userId).select("_id name email role phone address image");
   return user;
 };
 

@@ -99,12 +99,19 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
   };
 };
 
-const getTourBySlugService = async (slug: string) => {
-  const tour = await Tour.findOne({ 
-    slug, 
+const getTourBySlugService = async (param: string) => {
+  const query: any = {
     status: TOUR_STATUS.ACTIVE,
-    active: true 
-  })
+    active: true
+  };
+
+  if (Types.ObjectId.isValid(param)) {
+    query.$or = [{ _id: param }, { slug: param }];
+  } else {
+    query.slug = param;
+  }
+
+  const tour = await Tour.findOne(query)
     .populate('guideId', 'name email image bio language rating reviewCount');
   
   if (!tour) {
