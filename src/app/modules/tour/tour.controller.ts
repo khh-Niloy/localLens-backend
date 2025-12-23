@@ -51,7 +51,8 @@ const getTourEnums = async (req: Request, res: Response) => {
 
 const getAllTours = async (req: Request, res: Response) => {
   try {
-    const tours = await tourServices.getAllToursService();
+    const { category } = req.query;
+    const tours = await tourServices.getAllToursService(category as string);
     responseManager.success(res, {
       statusCode: 200,
       success: true,

@@ -22,11 +22,17 @@ const createTourService = async (tourData: Partial<ITourListing>) => {
   return tour;
 };
 
-const getAllToursService = async () => {
-  const tours = await Tour.find({ 
+const getAllToursService = async (category?: string) => {
+  const filter: any = { 
     status: TOUR_STATUS.ACTIVE,
     active: true 
-  })
+  };
+
+  if (category) {
+    filter.category = category;
+  }
+
+  const tours = await Tour.find(filter)
   .populate('guideId', 'name email image rating reviewCount')
   .sort({ createdAt: -1 });
   return tours;
