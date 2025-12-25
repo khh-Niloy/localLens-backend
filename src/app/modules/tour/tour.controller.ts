@@ -51,8 +51,8 @@ const getTourEnums = async (req: Request, res: Response) => {
 
 const getAllTours = async (req: Request, res: Response) => {
   try {
-    const { category } = req.query;
-    const tours = await tourServices.getAllToursService(category as string);
+    const { category, isFeatured } = req.query;
+    const tours = await tourServices.getAllToursService(category as string, isFeatured as string);
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -142,7 +142,7 @@ const updateTour = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { userId } = req.user;
-    
+
     const files = req.files as Express.Multer.File[];
     const updateData = { ...req.body };
     

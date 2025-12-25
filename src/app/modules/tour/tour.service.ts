@@ -22,7 +22,7 @@ const createTourService = async (tourData: Partial<ITourListing>) => {
   return tour;
 };
 
-const getAllToursService = async (category?: string) => {
+const getAllToursService = async (category?: string, isFeatured?: string | boolean) => {
   const filter: any = { 
     status: TOUR_STATUS.ACTIVE,
     active: true 
@@ -30,6 +30,10 @@ const getAllToursService = async (category?: string) => {
 
   if (category) {
     filter.category = category;
+  }
+
+  if (isFeatured !== undefined) {
+    filter.isFeatured = isFeatured === 'true' || isFeatured === true;
   }
 
   const tours = await Tour.find(filter)
@@ -159,6 +163,7 @@ const updateTourService = async (tourId: string, updateData: Partial<ITourListin
   if (!tour) {
     throw new Error("Tour not found");
   }
+  console.log(updateData);
 
   if (tour.guideId.toString() !== userId.toString()) {
     throw new Error("You can only update your own tours");
@@ -178,6 +183,8 @@ const updateTourService = async (tourId: string, updateData: Partial<ITourListin
     { $set: updateData },
     { new: true, runValidators: true }
   ).populate('guideId', 'name email image');
+
+  // console.log(updatedTour);
 
   return updatedTour;
 };
