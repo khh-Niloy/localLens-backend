@@ -187,10 +187,8 @@ const getUserReviews = async (req: Request, res: Response) => {
 
 const getLatestReviews = async (req: Request, res: Response) => {
   try {
-    const { limit = 6 } = req.query;
-
     const version = (await redis.get("global:reviews:version")) || 1;
-    const cacheKey = `review:latest:v:${version}:l:${limit}`;
+    const cacheKey = `review:latest:v:${version}`;
 
     const cachedReviews = await redis.get(cacheKey);
     if (cachedReviews) {
@@ -202,7 +200,7 @@ const getLatestReviews = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await reviewService.getLatestReviews(Number(limit));
+    const result = await reviewService.getLatestReviews();
 
     await redis.setex(cacheKey, 3600, JSON.stringify(result));
 

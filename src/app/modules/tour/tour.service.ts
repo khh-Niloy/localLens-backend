@@ -2,6 +2,7 @@ import { createSlug } from "../../utils/createSlug";
 import { Booking } from "../booking/booking.model";
 import { BOOKING_STATUS } from "../booking/booking.interface";
 import { ITourListing, ITourSearchQuery, TOUR_STATUS } from "./tour.interface";
+import { Roles } from "../users/user.interface";
 import { Tour } from "./tour.model";
 import { Types } from "mongoose";
 import { redis } from "../../lib/connectRedis";
@@ -127,11 +128,10 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
 const getTourByIdService = async (id: string) => {
   const tour = await Tour.findById(id)
     .populate('guideId', 'name email image bio language rating reviewCount');
-  
+
   if (!tour) {
     throw new Error("Tour not found");
   }
-  
   return tour;
 };
 

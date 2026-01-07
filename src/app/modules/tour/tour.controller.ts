@@ -71,32 +71,63 @@ const getTourEnums = async (req: Request, res: Response) => {
 
 const getAllFeaturedTours = async (req: Request, res: Response) => {
   try {
-    const version = (await redis.get("featured:version")) || 1
+    const version = (await redis.get("featured:version")) || 1;
 
     const { cursor } = req.query;
     const cursorKey = cursor || "first";
-    const cacheKey = `featured:${version}:cursor:${cursorKey}`
+    const cacheKey = `featured-ids:${version}:cursor:${cursorKey}`;
 
-    const featuredCache = await redis.get(cacheKey);
-    if (featuredCache) {
-    return responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "Featured tours fetched successfully",
-      data: JSON.parse(featuredCache),
-    });
-   }
+    const cachedIdsData = await redis.get(cacheKey);
+    
+    if (cachedIdsData) {
+      const { ids, nextCursor } = JSON.parse(cachedIdsData);
 
-    const {data, nextCursor} = await tourServices.getAllFeaturedToursService({cursor: 
-      cursor as string });
+      const hydratedTours = await Promise.all(
+        ids.map(async (id: string) => {
+          const version = (await redis.get(`tour:detail:${id}:version`)) || 1;
+          const detailCache = await redis.get(`tour:detail:${id}:${version}`);
+          if (detailCache) return JSON.parse(detailCache);
+          
+          try {
+            const tour = await tourServices.getTourByIdService(id);
+            if (tour) {
+              await redis.setex(`tour:detail:${id}:${version}`, 3600, JSON.stringify(tour));
+            }
+            return tour;
+          } catch (error) {
+            return null;
+          }
+        })
+      );
 
-    await redis.setex(cacheKey, 900, JSON.stringify({data, nextCursor}));
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "Featured tours fetched successfully",
+        data: {
+          data: hydratedTours.filter(t => t !== null), 
+          nextCursor
+        },
+      });
+    }
+
+    const { data, nextCursor } = await tourServices.getAllFeaturedToursService({ cursor: cursor as string });
+
+    const ids = data.map((t: any) => t._id.toString());
+    await redis.setex(cacheKey, 900, JSON.stringify({ ids, nextCursor }));
+
+    await Promise.all(
+      data.map(async (tour: any) => {
+        const version = (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
+        await redis.setex(`tour:detail:${tour._id.toString()}:${version}`, 3600, JSON.stringify(tour));
+      })
+    );
 
     responseManager.success(res, {
       statusCode: 200,
       success: true,
       message: "Featured tours fetched successfully",
-      data: {data, nextCursor},
+      data: { data, nextCursor },
     });
   } catch (error) {
     logger.log("Error fetching featured tours:", error);
@@ -117,12 +148,13 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
       
       const hydratedTours = await Promise.all(
         ids.map(async (id: string) => {
-          const detailCache = await redis.get(`tour:detail:${id}`);
+          const version = (await redis.get(`tour:detail:${id}:version`)) || 1;
+          const detailCache = await redis.get(`tour:detail:${id}:${version}`);
           if (detailCache) return JSON.parse(detailCache);
           
           const tour = await tourServices.getTourByIdService(id);
           if (tour) {
-            await redis.setex(`tour:detail:${id}`, 3600, JSON.stringify(tour));
+            await redis.setex(`tour:detail:${id}:${version}`, 300, JSON.stringify(tour));
           }
           return tour;
         })
@@ -145,9 +177,10 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
 
     // Pre-cache individual tour details for future list requests
     await Promise.all(
-      data.map((tour: any) => 
-        redis.setex(`tour:detail:${tour._id.toString()}`, 3600, JSON.stringify(tour))
-      )
+      data.map(async (tour: any) => {
+        const version = (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
+        await redis.setex(`tour:detail:${tour._id.toString()}:${version}`, 3600, JSON.stringify(tour));
+      })
     );
 
     responseManager.success(res, {
@@ -188,9 +221,13 @@ const getTourById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const cacheKey = `tour:detail:${id}`;
+    const version = (await redis.get(`tour:detail:${id}:version`) || 1);
+    const cacheKey = `tour:detail:${id}:${version}`;
+    console.log("Tour version: ", version);
+    console.log("Tour id: ", id);
 
     const cachedTour = await redis.get(cacheKey);
+
 
     if (cachedTour) {
       return responseManager.success(res, {
@@ -300,14 +337,30 @@ const updateTour = async (req: Request, res: Response) => {
       updateData.images = files.map((file) => file.path);
     }
 
+    console.log(updateData);
+
     const tour = await tourServices.updateTourService(id, updateData, userId);
 
-    if (req.body.isFeatured !== undefined) {
-      await redis.incr("featured:version");
+    // Invalidate featured cache if handling a featured tour
+    // We check if the tour is currently featured (tour.isFeatured) OR if the 'isFeatured' status is being toggled
+    const shouldInvalidateFeatured = req.body.isFeatured !== undefined || tour?.isFeatured;
+
+    if (shouldInvalidateFeatured) {
+        await redis.incr("featured:version");
+    }
+
+    // Invalidate Global List (Category/Location) only if filtering fields change
+    // If we simply update title/description, the list structure (IDs) remains valid.
+    // But if we change category, location, or price (sorting), the list order/contents might change.
+    if (req.body.category || req.body.location || req.body.tourFee !== undefined) {
+      await redis.incr("global:tours:version");
     }
 
     await redis.incr(`guide-tour-list:${userId}:version`);
-    await redis.del(`tour:detail:${id}`);
+    await redis.incr(`tour:detail:${id}:version`);
+
+    console.log("Tour updated successfully, invalidating cache");
+    console.log("Tour id: ", id);
 
     responseManager.success(res, {
       statusCode: 200,
