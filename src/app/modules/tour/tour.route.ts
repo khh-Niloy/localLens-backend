@@ -18,9 +18,11 @@ tourRoutes.post(
 
 tourRoutes.get("/enums", TourController.getTourEnums);
 
-tourRoutes.get("/", TourController.getAllTours);
+tourRoutes.get("/featured", TourController.getAllFeaturedTours);
 
-tourRoutes.get("/:slug", TourController.getTourBySlug);
+tourRoutes.get("/", TourController.getAllToursByCategory); // using query
+
+tourRoutes.get("/:id", TourController.getTourById);
 
 tourRoutes.get(
   "/search", 
@@ -55,8 +57,8 @@ tourRoutes.delete(
 );
 
 // Admin routes
-tourRoutes.get(
-  "/admin/all-tours",
-  roleBasedProtection(Roles.ADMIN),
-  TourController.getAllToursForAdmin
-);
+// tourRoutes.get(
+//   "/admin/all-tours",
+//   roleBasedProtection(Roles.ADMIN),
+//   TourController.getAllToursForAdmin
+// );

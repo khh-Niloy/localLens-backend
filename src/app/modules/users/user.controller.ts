@@ -3,6 +3,8 @@ import { userServices } from "./user.service";
 import { responseManager } from "../../utils/responseManager";
 import { JwtPayload } from "jsonwebtoken";
 import { cookiesManagement } from "../../utils/cookiesManagement";
+import { redis } from "../../lib/connectRedis";
+import { IisActive, Roles } from "./user.interface";
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -14,6 +16,9 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
       newCreatedUser.accessToken,
       newCreatedUser.refreshToken
     );
+
+    await redis.incr("user:v");
+
     responseManager.success(res, {
       statusCode: 201,
       success: true,
@@ -28,30 +33,31 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
 
 const getProfile = async (req: Request, res: Response) => {
   try {
+    const userId = req.user.userId;
+    const version = (await redis.get(`user:profile:${userId}:version`)) || 1
+    const cacheKey = `user:profile:${userId}:v${version}`
+    const profileCache = await redis.get(cacheKey)
+
+    if(profileCache){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "my info",
+        data: JSON.parse(profileCache),
+      });
+    }
+
     const userInfo = req.user;
     const profile = await userServices.getProfileService(
       userInfo as JwtPayload
     );
+
+    await redis.set(cacheKey, JSON.stringify(profile), "EX", 1800);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
       message: "my info",
-      data: profile,
-    });
-  } catch (error) {
-    console.log(error);
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
-const getPublicProfile = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const profile = await userServices.getPublicProfileService(id);
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "Public profile retrieved",
       data: profile,
     });
   } catch (error) {
@@ -65,10 +71,10 @@ const updateProfile = async (req: Request, res: Response) => {
     const userInfo = req.user;
     const file = req.file as Express.Multer.File;
 
-    console.log(
-      "File uploaded:",
-      file ? { path: file.path, fieldname: file.fieldname } : "No file"
-    );
+    // console.log(
+    //   "File uploaded:",
+    //   file ? { path: file.path, fieldname: file.fieldname } : "No file"
+    // );
 
     const reqBody: any = {
       ...req.body,
@@ -88,6 +94,8 @@ const updateProfile = async (req: Request, res: Response) => {
       reqBody
     );
 
+    await redis.incr(`user:profile:${userInfo.userId}:version`);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -102,7 +110,23 @@ const updateProfile = async (req: Request, res: Response) => {
 
 const getUserEnums = async (req: Request, res: Response) => {
   try {
-    const { Roles, IisActive } = await import("./user.interface");
+    const cached = await redis.get("user:enums");
+
+    if(cached){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "User enums fetched successfully",
+        data: JSON.parse(cached),
+      });
+    }
+
+    const data = {
+      roles: Object.values(Roles),
+      activeStatuses: Object.values(IisActive),
+    }
+
+    await redis.set("user:enums", JSON.stringify(data), "EX", 1800);
 
     responseManager.success(res, {
       statusCode: 200,
@@ -121,7 +145,23 @@ const getUserEnums = async (req: Request, res: Response) => {
 
 const getAllUsers = async (req: Request, res: Response) => {
   try {
+    const version = (await redis.get("user:v")) || 1
+    const userCacheKey = `user:v${version}`
+
+    const userCache = await redis.get(userCacheKey);
+
+    if(userCache){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "All users retrieved successfully",
+        data: JSON.parse(userCache),
+      });
+    }
+
     const users = await userServices.getAllUsersService();
+    await redis.set(userCacheKey, JSON.stringify(users), "EX", 1800);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -137,7 +177,6 @@ const getAllUsers = async (req: Request, res: Response) => {
 export const userController = {
   createUser,
   getProfile,
-  getPublicProfile,
   updateProfile,
   getUserEnums,
   getAllUsers,

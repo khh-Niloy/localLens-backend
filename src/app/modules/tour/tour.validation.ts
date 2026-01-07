@@ -39,7 +39,6 @@ export const updateTourZodSchema = z.object({
     location: z.string().optional(),
     cancellationPolicy: z.string().optional(),
     status: z.nativeEnum(TOUR_STATUS).optional(),
-    active: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
     // Arrays - safely parsed from FormData strings
     highlights: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
     included: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),

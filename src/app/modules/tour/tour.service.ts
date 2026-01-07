@@ -4,6 +4,7 @@ import { BOOKING_STATUS } from "../booking/booking.interface";
 import { ITourListing, ITourSearchQuery, TOUR_STATUS } from "./tour.interface";
 import { Tour } from "./tour.model";
 import { Types } from "mongoose";
+import { redis } from "../../lib/connectRedis";
 
 const createTourService = async (tourData: Partial<ITourListing>) => {
   const slug = createSlug(tourData.title!);
@@ -22,24 +23,39 @@ const createTourService = async (tourData: Partial<ITourListing>) => {
   return tour;
 };
 
-const getAllToursService = async (category?: string, isFeatured?: string | boolean) => {
-  const filter: any = { 
-    status: TOUR_STATUS.ACTIVE,
-    active: true 
-  };
+const getAllFeaturedToursService = async ({cursor}: {cursor?: string}) => {
 
-  if (category) {
-    filter.category = category;
+  const filter : any = {
+    status: TOUR_STATUS.ACTIVE,
+    isFeatured: true,
   }
 
-  if (isFeatured !== undefined) {
-    filter.isFeatured = isFeatured === 'true' || isFeatured === true;
+  const limit = 4
+
+  if(cursor){
+    filter.createdAt = { $lt: new Date(cursor) }
   }
 
   const tours = await Tour.find(filter)
-  .populate('guideId', 'name email image rating reviewCount')
-  .sort({ createdAt: -1 });
-  return tours;
+  .sort({ createdAt: -1 })
+  .limit(limit+1)
+
+  const hasNext = tours.length > limit
+  if(hasNext) tours.pop()
+
+  return {data: tours, nextCursor: hasNext ? tours[tours.length - 1].createdAt : null}
+};
+
+const getAllToursByCategoryService = async (category?: string, location?: string) => {
+  const filter: any = { status: TOUR_STATUS.ACTIVE };
+  if (category) {
+    filter.category = { $regex: category, $options: 'i' };
+  }
+  if (location) {
+    filter.location = { $regex: location, $options: 'i' };
+  }
+  const tours = await Tour.find(filter).sort({ createdAt: -1 });
+  return { total: tours.length, data: tours };
 };
 
 const searchToursService = async (searchQuery: ITourSearchQuery) => {
@@ -61,7 +77,6 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
   // Build filter object
   const filter: any = {
     status: TOUR_STATUS.ACTIVE,
-    active: true
   };
 
   if (category) filter.category = category;
@@ -109,19 +124,8 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
   };
 };
 
-const getTourBySlugService = async (param: string) => {
-  const query: any = {
-    status: TOUR_STATUS.ACTIVE,
-    active: true
-  };
-
-  if (Types.ObjectId.isValid(param)) {
-    query.$or = [{ _id: param }, { slug: param }];
-  } else {
-    query.slug = param;
-  }
-
-  const tour = await Tour.findOne(query)
+const getTourByIdService = async (id: string) => {
+  const tour = await Tour.findById(id)
     .populate('guideId', 'name email image bio language rating reviewCount');
   
   if (!tour) {
@@ -205,7 +209,10 @@ const deleteTourService = async (tourId: string, userId: string) => {
 
   await Tour.findByIdAndUpdate(tourId, { active: false });
   
-  return { message: "Tour deleted successfully" };
+  return { 
+    message: "Tour deleted successfully",
+    data: tour
+  };
 };
 
 const getAllToursForAdminService = async () => {
@@ -217,12 +224,13 @@ const getAllToursForAdminService = async () => {
 
 export const tourServices = {
   createTourService,
-  getAllToursService,
+  getAllFeaturedToursService,
   searchToursService,
-  getTourBySlugService,
+  getTourByIdService,
   updateTourService,
   deleteTourService,
   getGuideMyToursService,
   getTouristMyToursService,
   getAllToursForAdminService,
+  getAllToursByCategoryService
 };

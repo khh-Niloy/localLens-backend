@@ -51,7 +51,6 @@ export interface ITourListing {
   rating?: number;
   reviewCount?: number;
   bookingCount?: number;
-  active: boolean;
   isFeatured: boolean;
   createdAt?: Date;
   updatedAt?: Date;

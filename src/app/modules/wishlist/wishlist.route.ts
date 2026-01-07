@@ -26,6 +26,3 @@ wishlistRoutes.delete(
   validateSchema(removeFromWishlistZodSchema),
   wishlistController.removeFromWishlist
 );
-
-// Check if tour is in wishlist
-wishlistRoutes.get("/check/:tourId", wishlistController.checkWishlistStatus);

@@ -46,7 +46,6 @@ const tourSchema = new Schema<ITourListing>(
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0, min: 0 },
     bookingCount: { type: Number, default: 0, min: 0 },
-    active: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
@@ -61,9 +60,9 @@ tourSchema.index({ tourFee: 1 });
 tourSchema.index({ createdAt: -1 });
 
 // Compound indexes for common queries
-tourSchema.index({ status: 1, active: 1 }); // Most common: active tours
-tourSchema.index({ status: 1, active: 1, category: 1 }); // Search with category
-tourSchema.index({ guideId: 1, status: 1, active: 1 }); // Guide's active tours
+tourSchema.index({ status: 1 }); // Most common: active tours
+tourSchema.index({ status: 1, category: 1 }); // Search with category
+tourSchema.index({ guideId: 1, status: 1 }); // Guide's active tours
 
 // Text search index
 tourSchema.index({ title: 'text', description: 'text', location: 'text' });

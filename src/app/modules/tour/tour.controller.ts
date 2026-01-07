@@ -3,6 +3,8 @@ import { responseManager } from "../../utils/responseManager";
 import { tourServices } from "./tour.service";
 import { logger } from "../../utils/logger";
 import { ITourSearchQuery, TOUR_CATEGORY, TOUR_STATUS } from "./tour.interface";
+import { string } from "zod";
+import { redis } from "../../lib/connectRedis";
 
 const createTour = async (req: Request, res: Response) => {
   try {
@@ -15,9 +17,10 @@ const createTour = async (req: Request, res: Response) => {
       images: imagePaths,
     };
 
-    console.log("Tour data:", tourData);
-
     const tour = await tourServices.createTourService(tourData);
+
+    await redis.incr(`guide-tour-list:${req.user.userId}:version`);
+    await redis.incr("global:tours:version");
 
     responseManager.success(res, {
       statusCode: 201,
@@ -34,6 +37,23 @@ const createTour = async (req: Request, res: Response) => {
 
 const getTourEnums = async (req: Request, res: Response) => {
   try {
+    const cache = await redis.get("tour:enums");
+    if (cache) {
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "Tour enums fetched successfully",
+        data: JSON.parse(cache),
+      });
+    }
+
+    const data = {
+      categories: Object.values(TOUR_CATEGORY),
+      statuses: Object.values(TOUR_STATUS)
+    };
+    
+    redis.set("tour:enums", JSON.stringify(data), "EX", 86400);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -49,18 +69,96 @@ const getTourEnums = async (req: Request, res: Response) => {
   }
 };
 
-const getAllTours = async (req: Request, res: Response) => {
+const getAllFeaturedTours = async (req: Request, res: Response) => {
   try {
-    const { category, isFeatured } = req.query;
-    const tours = await tourServices.getAllToursService(category as string, isFeatured as string);
+    const version = (await redis.get("featured:version")) || 1
+
+    const { cursor } = req.query;
+    const cursorKey = cursor || "first";
+    const cacheKey = `featured:${version}:cursor:${cursorKey}`
+
+    const featuredCache = await redis.get(cacheKey);
+    if (featuredCache) {
+    return responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Featured tours fetched successfully",
+      data: JSON.parse(featuredCache),
+    });
+   }
+
+    const {data, nextCursor} = await tourServices.getAllFeaturedToursService({cursor: 
+      cursor as string });
+
+    await redis.setex(cacheKey, 900, JSON.stringify({data, nextCursor}));
+
+    responseManager.success(res, {
+      statusCode: 200,
+      success: true,
+      message: "Featured tours fetched successfully",
+      data: {data, nextCursor},
+    });
+  } catch (error) {
+    logger.log("Error fetching featured tours:", error);
+    responseManager.error(res, error as Error, 500);
+  }
+};
+
+const getAllToursByCategory = async (req: Request, res: Response) => {
+  try {
+    const { category, location } = req.query;
+
+    const globalVersion = (await redis.get("global:tours:version")) || 1;
+    const cacheKey = `tour-list-ids:cat:${category || 'all'}:loc:${location || 'all'}:v:${globalVersion}`;
+
+    const cachedIdsData = await redis.get(cacheKey);
+    if (cachedIdsData) {
+      const { ids, total: cachedTotal } = JSON.parse(cachedIdsData);
+      
+      const hydratedTours = await Promise.all(
+        ids.map(async (id: string) => {
+          const detailCache = await redis.get(`tour:detail:${id}`);
+          if (detailCache) return JSON.parse(detailCache);
+          
+          const tour = await tourServices.getTourByIdService(id);
+          if (tour) {
+            await redis.setex(`tour:detail:${id}`, 3600, JSON.stringify(tour));
+          }
+          return tour;
+        })
+      );
+
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "Tours fetched successfully",
+        meta: cachedTotal,
+        data: hydratedTours.filter(t => t !== null)
+      });
+    }
+
+    const { data, total } = await tourServices.getAllToursByCategoryService(category as string, location as string);
+
+    // Cache the List Structure (IDs)
+    const ids = data.map((t: any) => t._id.toString());
+    await redis.setex(cacheKey, 3600, JSON.stringify({ ids, total }));
+
+    // Pre-cache individual tour details for future list requests
+    await Promise.all(
+      data.map((tour: any) => 
+        redis.setex(`tour:detail:${tour._id.toString()}`, 3600, JSON.stringify(tour))
+      )
+    );
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
       message: "Tours fetched successfully",
-      data: tours,
+      meta: total,
+      data: data
     });
   } catch (error) {
-    logger.log("Error fetching tours:", error);
+    logger.log("Error fetching tours by category:", error);
     responseManager.error(res, error as Error, 500);
   }
 };
@@ -86,10 +184,26 @@ const searchTours = async (req: Request, res: Response) => {
   }
 };
 
-const getTourBySlug = async (req: Request, res: Response) => {
+const getTourById = async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
-    const tour = await tourServices.getTourBySlugService(slug);
+    const { id } = req.params;
+
+    const cacheKey = `tour:detail:${id}`;
+
+    const cachedTour = await redis.get(cacheKey);
+
+    if (cachedTour) {
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "Tour fetched successfully",
+        data: JSON.parse(cachedTour),
+      });
+    }
+
+    const tour = await tourServices.getTourByIdService(id);
+
+    await redis.setex(cacheKey, 3600, JSON.stringify(tour));
     
     responseManager.success(res, {
       statusCode: 200,
@@ -98,7 +212,7 @@ const getTourBySlug = async (req: Request, res: Response) => {
       data: tour,
     });
   } catch (error) {
-    logger.log("Error fetching tour by slug:", error);
+    logger.log("Error fetching tour by id:", error);
     const statusCode = (error as Error).message === "Tour not found" ? 404 : 500;
     responseManager.error(res, error as Error, statusCode);
   }
@@ -107,8 +221,24 @@ const getTourBySlug = async (req: Request, res: Response) => {
 const getGuideMyTours = async (req: Request, res: Response) => {
   try {
     const { userId } = req.user;
+
+    const version = (await redis.get(`guide-tour-list:${userId}:version`)) || 1;
+    const cacheKey = `guide-tour-list:${userId}:${version}`;
+
+    const cachedGuideTours = await redis.get(cacheKey);
+
+    if(cachedGuideTours){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "My tours fetched successfully",
+        data: JSON.parse(cachedGuideTours),
+      });
+    }
     
     const tours = await tourServices.getGuideMyToursService(userId);
+
+    await redis.setex(cacheKey, 600, JSON.stringify(tours));
     
     responseManager.success(res, {
       statusCode: 200,
@@ -125,7 +255,27 @@ const getGuideMyTours = async (req: Request, res: Response) => {
 const getTouristMyTours = async (req: Request, res: Response) => {
   try {
     const { userId } = req.user;
+
+    const version =
+      (await redis.get(`tourist-tour-list:${userId}:version`)) || 1;
+
+    const cacheKey = `tourist-tour-list:${userId}:v:${version}`;
+
+    const cachedTouristTours = await redis.get(cacheKey);
+
+    if(cachedTouristTours){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "My tours fetched successfully",
+        data: JSON.parse(cachedTouristTours),
+      });
+    }
+
     const tours = await tourServices.getTouristMyToursService(userId);
+
+    await redis.setex(cacheKey, 300, JSON.stringify(tours));
+    
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -152,6 +302,13 @@ const updateTour = async (req: Request, res: Response) => {
 
     const tour = await tourServices.updateTourService(id, updateData, userId);
 
+    if (req.body.isFeatured !== undefined) {
+      await redis.incr("featured:version");
+    }
+
+    await redis.incr(`guide-tour-list:${userId}:version`);
+    await redis.del(`tour:detail:${id}`);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -176,6 +333,16 @@ const deleteTour = async (req: Request, res: Response) => {
     const { userId } = req.user;
 
     const result = await tourServices.deleteTourService(id, userId);
+
+    // Cache Invalidation
+    if (result.data.isFeatured) {
+      await redis.incr("featured:version");
+    }
+
+    await redis.incr(`guide-tour-list:${userId}:version`);
+    // Structural change: List of IDs has changed, increment global version
+    await redis.incr("global:tours:version");
+    await redis.del(`tour:detail:${id}`);
 
     responseManager.success(res, {
       statusCode: 200,
@@ -212,13 +379,14 @@ const getAllToursForAdmin = async (req: Request, res: Response) => {
 
 export const TourController = {
   createTour,
-  getAllTours,
+  getAllFeaturedTours,
   searchTours,
-  getTourBySlug,
+  getTourById,
   updateTour,
   deleteTour,
   getGuideMyTours,
   getTouristMyTours,
   getTourEnums,
   getAllToursForAdmin,
+  getAllToursByCategory
 };

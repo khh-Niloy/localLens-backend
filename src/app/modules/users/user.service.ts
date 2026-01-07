@@ -46,14 +46,6 @@ const getProfileService = async (userInfo: JwtPayload) => {
   return profile;
 };
 
-const getPublicProfileService = async (userId: string) => {
-  const profile = await User.findById(userId).select("-isDeleted -isBlocked");
-  if (!profile) {
-    throw new Error("User not found");
-  }
-  return profile;
-};
-
 const updateProfileService = async (
   userInfo: JwtPayload,
   reqBody: Partial<IUser>
@@ -105,7 +97,6 @@ const getAllUsersService = async () => {
 export const userServices = {
   createUserService,
   getProfileService,
-  getPublicProfileService,
   updateProfileService,
   getAllUsersService,
 };

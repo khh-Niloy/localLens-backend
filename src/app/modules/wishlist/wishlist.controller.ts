@@ -1,19 +1,38 @@
 import { Request, Response, NextFunction } from "express";
 import { wishlistServices } from "./wishlist.service";
 import { responseManager } from "../../utils/responseManager";
+import { redis } from "../../lib/connectRedis";
+import { logger } from "../../utils/logger";
 
 const getUserWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req.user;
-    const wishlist = await wishlistServices.getUserWishlistService(userId);
+    
+    const version = (await redis.get(`wishlist:user:${userId}:v`)) || 1;
+    const cacheKey = `wishlist:user:${userId}:v:${version}`;
+
+    const cachedWishlist = await redis.get(cacheKey);
+    if (cachedWishlist) {
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "Wishlist retrieved successfully",
+        data: JSON.parse(cachedWishlist),
+      });
+    }
+
+    const result = await wishlistServices.getUserWishlistService(userId);
+
+    await redis.setex(cacheKey, 1800, JSON.stringify(result));
 
     responseManager.success(res, {
       statusCode: 200,
       success: true,
       message: "Wishlist retrieved successfully",
-      data: wishlist,
+      data: result,
     });
   } catch (error) {
+    logger.log("Error fetching user wishlist:", error);
     responseManager.error(res, error as Error, 500);
   }
 };
@@ -25,6 +44,9 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
 
     const wishlistItem = await wishlistServices.addToWishlistService(userId, tourId);
 
+    // Cache Invalidation
+    await redis.incr(`wishlist:user:${userId}:v`);
+
     responseManager.success(res, {
       statusCode: 201,
       success: true,
@@ -32,6 +54,7 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
       data: wishlistItem,
     });
   } catch (error) {
+    logger.log("Error adding to wishlist:", error);
     let statusCode = 500;
     if ((error as Error).message.includes("not found")) {
       statusCode = 404;
@@ -49,6 +72,9 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
 
     await wishlistServices.removeFromWishlistService(userId, tourId);
 
+    // Cache Invalidation
+    await redis.incr(`wishlist:user:${userId}:v`);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -56,6 +82,7 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
       data: null,
     });
   } catch (error) {
+    logger.log("Error removing from wishlist:", error);
     let statusCode = 500;
     if ((error as Error).message.includes("not found")) {
       statusCode = 404;
@@ -64,27 +91,8 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const checkWishlistStatus = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { userId } = req.user;
-    const { tourId } = req.params;
-
-    const status = await wishlistServices.checkWishlistStatusService(userId, tourId);
-
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "Wishlist status retrieved successfully",
-      data: status,
-    });
-  } catch (error) {
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
 export const wishlistController = {
   getUserWishlist,
   addToWishlist,
   removeFromWishlist,
-  checkWishlistStatus,
 };

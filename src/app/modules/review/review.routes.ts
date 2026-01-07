@@ -7,7 +7,6 @@ import { createReviewZodSchema, updateReviewZodSchema } from "./review.validatio
 
 export const reviewRoutes = Router();
 
-// Tourist routes - create and manage reviews
 reviewRoutes.post(
   "/",
   roleBasedProtection(Roles.TOURIST),
@@ -23,6 +22,7 @@ reviewRoutes.patch(
 );
 
 // Public routes - view reviews
+reviewRoutes.get("/latest", reviewController.getLatestReviews);
 reviewRoutes.get("/tour/:tourId", reviewController.getTourReviews);
 reviewRoutes.get("/guide/:guideId", reviewController.getGuideReviews);
 reviewRoutes.get("/user/:userId", reviewController.getUserReviews);

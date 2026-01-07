@@ -56,18 +56,8 @@ const removeFromWishlistService = async (userId: string, tourId: string) => {
   return wishlistItem;
 };
 
-const checkWishlistStatusService = async (userId: string, tourId: string) => {
-  const wishlistItem = await Wishlist.findOne({
-    userId: new Types.ObjectId(userId),
-    tourId: new Types.ObjectId(tourId)
-  });
-
-  return { isInWishlist: !!wishlistItem };
-};
-
 export const wishlistServices = {
   getUserWishlistService,
   addToWishlistService,
   removeFromWishlistService,
-  checkWishlistStatusService
 };
