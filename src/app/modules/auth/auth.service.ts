@@ -8,7 +8,9 @@ import { envVars } from "../../config/env";
 const userLoginService = async (playLoad: Partial<IUser>) => {
   const { email, password } = playLoad;
 
-  const user = await User.findOne({ email });
+  const userEmail = email?.toLowerCase().trim();
+
+  const user = await User.findOne({ email: userEmail }).select("+password");
 
   if (!user) {
     throw new Error("Please register first");
@@ -18,10 +20,12 @@ const userLoginService = async (playLoad: Partial<IUser>) => {
     password as string,
     user.password as string
   );
-
   if (!checkPassword) {
     throw new Error("password did not match!");
   }
+
+  // Get user without password for response
+  const userWithoutPassword = await User.findById(user._id);
 
   const jwtPayload = {
     userId: user._id,
@@ -31,7 +35,7 @@ const userLoginService = async (playLoad: Partial<IUser>) => {
 
   const { accessToken, refreshToken } = jwtManagement.createAccessAndRefreshToken(jwtPayload);
 
-  return { accessToken, refreshToken, user: user };
+  return { accessToken, refreshToken, user: userWithoutPassword };
 };
 
 const getNewAccessTokenService = async (refreshToken: string) => {
@@ -40,7 +44,7 @@ const getNewAccessTokenService = async (refreshToken: string) => {
 };
 
 const getMeService = async (payload: JwtPayload) => {
-  const user = await User.findById(payload.userId).select("name email role phone address image");
+  const user = await User.findById(payload.userId).select("_id name email role phone address image");
   return user;
 };
 
@@ -49,7 +53,7 @@ const changePassword = async (
   newPassword: string,
   payload: JwtPayload
 ) => {
-  const user = await User.findById(payload.userId);
+  const user = await User.findById(payload.userId).select("+password");
 
   if (!user) {
     throw new Error("user not exist");
@@ -57,7 +61,7 @@ const changePassword = async (
 
   const isPasswordOK = await bcryptjs.compare(
     oldPassword,
-    user?.password as string
+    user.password as string
   );
 
   if (!isPasswordOK) {
@@ -70,7 +74,7 @@ const changePassword = async (
   );
 
   user.password = newHashedPassword;
-  user.save();
+  await user.save();
 };
 
 export const authService = {

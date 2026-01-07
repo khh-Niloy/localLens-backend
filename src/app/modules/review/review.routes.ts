@@ -7,7 +7,6 @@ import { createReviewZodSchema, updateReviewZodSchema } from "./review.validatio
 
 export const reviewRoutes = Router();
 
-// Tourist routes - create and manage reviews
 reviewRoutes.post(
   "/",
   roleBasedProtection(Roles.TOURIST),
@@ -22,27 +21,9 @@ reviewRoutes.patch(
   reviewController.updateReview
 );
 
-reviewRoutes.delete(
-  "/:id",
-  roleBasedProtection(Roles.TOURIST),
-  reviewController.deleteReview
-);
-
 // Public routes - view reviews
+reviewRoutes.get("/latest", reviewController.getLatestReviews);
 reviewRoutes.get("/tour/:tourId", reviewController.getTourReviews);
 reviewRoutes.get("/guide/:guideId", reviewController.getGuideReviews);
 reviewRoutes.get("/user/:userId", reviewController.getUserReviews);
-
-// Admin routes
-reviewRoutes.get(
-  "/admin/all",
-  roleBasedProtection(Roles.ADMIN),
-  reviewController.getAllReviews
-);
-
-reviewRoutes.delete(
-  "/admin/:id",
-  roleBasedProtection(Roles.ADMIN),
-  reviewController.adminDeleteReview
-);
 

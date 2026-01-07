@@ -3,25 +3,22 @@ import { userServices } from "./user.service";
 import { responseManager } from "../../utils/responseManager";
 import { JwtPayload } from "jsonwebtoken";
 import { cookiesManagement } from "../../utils/cookiesManagement";
+import { redis } from "../../lib/connectRedis";
+import { IisActive, Roles } from "./user.interface";
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Parse language array if it's a string
     const userData = { ...req.body };
-    if (userData.language && typeof userData.language === 'string') {
-      try {
-        userData.language = JSON.parse(userData.language);
-      } catch {
-        userData.language = userData.language.split(',').map((lang: string) => lang.trim());
-      }
-    }
-    
+
     const newCreatedUser = await userServices.createUserService(userData);
     cookiesManagement.setCookie(
       res,
       newCreatedUser.accessToken,
       newCreatedUser.refreshToken
     );
+
+    await redis.incr("user:v");
+
     responseManager.success(res, {
       statusCode: 201,
       success: true,
@@ -34,73 +31,29 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.params.id;
-    const payload = req.user;
-    const reqBody = req.body;
-    const updatedUserInfo = await userServices.updateUserService(
-      userId,
-      payload as JwtPayload,
-      reqBody
-    );
-
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "user info updated",
-      data: updatedUserInfo,
-    });
-  } catch (err) {
-    console.log(err);
-    next(err);
-  }
-};
-
-const getAllUser = async (req: Request, res: Response) => {
-  try {
-    const { allUser, totalCount } = await userServices.getAllUserService();
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "all user retreived",
-      meta: totalCount,
-      data: allUser,
-    });
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const getUsersByRole = async (req: Request, res: Response) => {
-  try {
-    const { role } = req.params;
-    const { Roles } = await import("./user.interface");
-    
-    if (!Object.values(Roles).includes(role as typeof Roles[keyof typeof Roles])) {
-      return responseManager.error(res, new Error("Invalid role"), 400);
-    }
-    
-    const { users, totalCount } = await userServices.getUsersByRoleService(role as typeof Roles[keyof typeof Roles]);
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: `${role} users retrieved successfully`,
-      meta: totalCount,
-      data: users,
-    });
-  } catch (error) {
-    console.log(error);
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
 const getProfile = async (req: Request, res: Response) => {
   try {
+    const userId = req.user.userId;
+    const version = (await redis.get(`user:profile:${userId}:version`)) || 1
+    const cacheKey = `user:profile:${userId}:v${version}`
+    const profileCache = await redis.get(cacheKey)
+
+    if(profileCache){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "my info",
+        data: JSON.parse(profileCache),
+      });
+    }
+
     const userInfo = req.user;
     const profile = await userServices.getProfileService(
       userInfo as JwtPayload
     );
+
+    await redis.set(cacheKey, JSON.stringify(profile), "EX", 1800);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -113,75 +66,35 @@ const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-const getPublicProfile = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const profile = await userServices.getPublicProfileService(id);
-    responseManager.success(res, {
-      statusCode: 200,
-      success: true,
-      message: "Public profile retrieved",
-      data: profile,
-    });
-  } catch (error) {
-    console.log(error);
-    responseManager.error(res, error as Error, 500);
-  }
-};
-
 const updateProfile = async (req: Request, res: Response) => {
   try {
     const userInfo = req.user;
     const file = req.file as Express.Multer.File;
-    
-    console.log('File uploaded:', file ? { path: file.path, fieldname: file.fieldname } : 'No file');
-    
-    // Helper function to safely parse JSON or return array
-    const parseArrayField = (field: any): any[] => {
-      if (!field) return [];
-      if (Array.isArray(field)) return field;
-      if (typeof field === 'string') {
-        try {
-          const parsed = JSON.parse(field);
-          return Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-          return field.split(',').map((item: string) => item.trim()).filter(Boolean);
-        }
-      }
-      return [];
-    };
 
-    // Parse array fields from FormData (they come as JSON strings)
+    // console.log(
+    //   "File uploaded:",
+    //   file ? { path: file.path, fieldname: file.fieldname } : "No file"
+    // );
+
     const reqBody: any = {
       ...req.body,
     };
-    
-    // If a file was uploaded, add the Cloudinary URL to the request body
+
     if (file && file.path) {
       reqBody.image = file.path;
-      console.log('Setting image URL:', file.path);
+      console.log("Setting image URL:", file.path);
     }
 
-    // Parse array fields if they exist
-    if (reqBody.language) {
-      reqBody.language = parseArrayField(reqBody.language);
-    }
-    if (reqBody.expertise) {
-      reqBody.expertise = parseArrayField(reqBody.expertise);
-    }
-    if (reqBody.travelPreferences) {
-      reqBody.travelPreferences = parseArrayField(reqBody.travelPreferences);
-    }
-
-    // Parse dailyRate if it's a string
-    if (reqBody.dailyRate && typeof reqBody.dailyRate === 'string') {
+    if (reqBody.dailyRate && typeof reqBody.dailyRate === "string") {
       reqBody.dailyRate = parseFloat(reqBody.dailyRate);
     }
-    
+
     const updatedProfile = await userServices.updateProfileService(
       userInfo as JwtPayload,
       reqBody
     );
+
+    await redis.incr(`user:profile:${userInfo.userId}:version`);
 
     responseManager.success(res, {
       statusCode: 200,
@@ -195,15 +108,34 @@ const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-const deleteUser = async (req: Request, res: Response) => {
+const getUserEnums = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    await userServices.deleteUserService(id);
+    const cached = await redis.get("user:enums");
+
+    if(cached){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "User enums fetched successfully",
+        data: JSON.parse(cached),
+      });
+    }
+
+    const data = {
+      roles: Object.values(Roles),
+      activeStatuses: Object.values(IisActive),
+    }
+
+    await redis.set("user:enums", JSON.stringify(data), "EX", 1800);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
-      message: "User deleted successfully",
-      data: null,
+      message: "User enums fetched successfully",
+      data: {
+        roles: Object.values(Roles),
+        activeStatuses: Object.values(IisActive),
+      },
     });
   } catch (error) {
     console.log(error);
@@ -211,18 +143,30 @@ const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-const getUserEnums = async (req: Request, res: Response) => {
+const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const { Roles, IisActive } = await import("./user.interface");
-    
+    const version = (await redis.get("user:v")) || 1
+    const userCacheKey = `user:v${version}`
+
+    const userCache = await redis.get(userCacheKey);
+
+    if(userCache){
+      return responseManager.success(res, {
+        statusCode: 200,
+        success: true,
+        message: "All users retrieved successfully",
+        data: JSON.parse(userCache),
+      });
+    }
+
+    const users = await userServices.getAllUsersService();
+    await redis.set(userCacheKey, JSON.stringify(users), "EX", 1800);
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
-      message: "User enums fetched successfully",
-      data: {
-        roles: Object.values(Roles),
-        activeStatuses: Object.values(IisActive)
-      },
+      message: "All users retrieved successfully",
+      data: users,
     });
   } catch (error) {
     console.log(error);
@@ -232,12 +176,8 @@ const getUserEnums = async (req: Request, res: Response) => {
 
 export const userController = {
   createUser,
-  getAllUser,
-  getUsersByRole,
-  updateUser,
   getProfile,
-  getPublicProfile,
   updateProfile,
-  deleteUser,
   getUserEnums,
+  getAllUsers,
 };

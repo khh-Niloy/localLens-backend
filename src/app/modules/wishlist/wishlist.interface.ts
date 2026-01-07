@@ -4,7 +4,6 @@ export interface IWishlist {
   _id?: Types.ObjectId;
   userId: Types.ObjectId;
   tourId: Types.ObjectId;
-  addedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

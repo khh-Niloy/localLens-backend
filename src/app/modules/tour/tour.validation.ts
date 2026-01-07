@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TOUR_CATEGORY, TOUR_STATUS } from "./tour.interface";
+import { parseArrayField, parseObjectField } from "../../utils/parseFormData";
 
 // Simplified validation schemas for easier frontend integration
 export const createTourZodSchema = z.object({
@@ -15,13 +16,13 @@ export const createTourZodSchema = z.object({
     location: z.string().min(1, "Location is required"),
     cancellationPolicy: z.string().optional(),
     status: z.nativeEnum(TOUR_STATUS).optional(),
-    // Arrays can be empty, will be handled in controller
-    highlights: z.any().optional(),
-    included: z.any().optional(),
-    notIncluded: z.any().optional(),
-    importantInfo: z.any().optional(),
-    itinerary: z.any().optional(),
-    availableDates: z.any().optional(),
+    // Arrays - safely parsed from FormData strings
+    highlights: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    included: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    notIncluded: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    importantInfo: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    itinerary: z.preprocess((val) => parseObjectField(val), z.any()).optional(),
+    availableDates: z.preprocess((val) => parseObjectField(val), z.any()).optional(),
   })
 });
 
@@ -38,14 +39,14 @@ export const updateTourZodSchema = z.object({
     location: z.string().optional(),
     cancellationPolicy: z.string().optional(),
     status: z.nativeEnum(TOUR_STATUS).optional(),
-    active: z.boolean().optional(),
-    // Arrays - flexible handling
-    highlights: z.any().optional(),
-    included: z.any().optional(),
-    notIncluded: z.any().optional(),
-    importantInfo: z.any().optional(),
-    itinerary: z.any().optional(),
-    availableDates: z.any().optional(),
+    // Arrays - safely parsed from FormData strings
+    highlights: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    included: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    notIncluded: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    importantInfo: z.preprocess((val) => parseArrayField(val), z.array(z.string())).optional(),
+    itinerary: z.preprocess((val) => parseObjectField(val), z.any()).optional(),
+    availableDates: z.preprocess((val) => parseObjectField(val), z.any()).optional(),
+    isFeatured: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
   })
 });
 

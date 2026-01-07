@@ -48,13 +48,7 @@ const createReview = async (reviewData: IReview) => {
   
   const review = await Review.create(reviewData);
   
-  // Update tour rating after creating review
-  await updateTourRating(reviewData.tourId);
-  
-  return await Review.findById(review._id)
-    .populate("userId", "name image")
-    .populate("tourId", "title")
-    .populate("guideId", "name image");
+  return review
 };
 
 const updateReview = async (reviewId: string, userId: string, updateData: Partial<IReview>) => {
@@ -73,7 +67,7 @@ const updateReview = async (reviewId: string, userId: string, updateData: Partia
     { new: true }
   )
     .populate("userId", "name image")
-    .populate("tourId", "title")
+    .populate("tourId", "title slug")
     .populate("guideId", "name image");
   
   // Update tour rating after updating review
@@ -82,34 +76,34 @@ const updateReview = async (reviewId: string, userId: string, updateData: Partia
   return updatedReview;
 };
 
-const deleteReview = async (reviewId: string, userId: string) => {
-  const review = await Review.findById(reviewId);
-  if (!review) {
-    throw new Error("Review not found");
-  }
-  
-  if (review.userId.toString() !== userId) {
-    throw new Error("You can only delete your own reviews");
-  }
-  
-  const tourId = review.tourId;
-  await Review.findByIdAndDelete(reviewId);
-  
-  // Update tour rating after deleting review
-  await updateTourRating(tourId);
-};
+const getTourReviews = async ({
+  tourId,
+  page,
+  limit,
+  cursor,
+}: {
+  tourId: string;
+  page: number;
+  limit: number;
+  cursor?: string;
+}) => {
+  const filter: any = { tourId };
 
-const getTourReviews = async (tourId: string, page: number, limit: number) => {
-  const skip = (page - 1) * limit;
-  
-  const reviews = await Review.find({ tourId })
+  if (cursor) {
+    filter.createdAt = { $lt: new Date(cursor) };
+  }
+
+  const reviews = await Review.find(filter)
     .populate("userId", "name image")
     .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-    
+    .limit(limit + 1);
+
+  const hasNextPage = reviews.length > limit;
+  if (hasNextPage) reviews.pop();
+
+  const nextCursor = hasNextPage ? reviews[reviews.length - 1].createdAt : null;
   const total = await Review.countDocuments({ tourId });
-  
+
   return {
     reviews,
     pagination: {
@@ -117,103 +111,111 @@ const getTourReviews = async (tourId: string, page: number, limit: number) => {
       limit,
       total,
       pages: Math.ceil(total / limit),
+      hasNextPage,
+      nextCursor,
     },
   };
 };
 
-const getGuideReviews = async (guideId: string, page: number, limit: number) => {
-  const skip = (page - 1) * limit;
-  
-  const reviews = await Review.find({ guideId })
-    .populate("userId", "name image")
-    .populate("tourId", "title")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-    
-  const total = await Review.countDocuments({ guideId });
-  
-  return {
-    reviews,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  };
-};
+const getGuideReviews = async ({
+  guideId,
+  page,
+  limit,
+  cursor,
+}: {
+  guideId: string;
+  page: number;
+  limit: number;
+  cursor?: string;
+}) => {
+  const filter: any = { guideId };
 
-const getUserReviews = async (userId: string, page: number, limit: number) => {
-  const skip = (page - 1) * limit;
-  
-  const reviews = await Review.find({ userId })
-    .populate("tourId", "title")
-    .populate("guideId", "name image")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-    
-  const total = await Review.countDocuments({ userId });
-  
-  return {
-    reviews,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  };
-};
-
-const getAllReviews = async (page: number, limit: number) => {
-  const skip = (page - 1) * limit;
-  
-  const reviews = await Review.find()
-    .populate("userId", "name image email")
-    .populate("tourId", "title")
-    .populate("guideId", "name image")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-    
-  const total = await Review.countDocuments();
-  
-  return {
-    reviews,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  };
-};
-
-const adminDeleteReview = async (reviewId: string) => {
-  const review = await Review.findById(reviewId);
-  if (!review) {
-    throw new Error("Review not found");
+  if (cursor) {
+    filter.createdAt = { $lt: new Date(cursor) };
   }
-  
-  const tourId = review.tourId;
-  await Review.findByIdAndDelete(reviewId);
-  
-  // Update tour rating after deleting review
-  await updateTourRating(tourId);
-  
-  return review;
+
+  const reviews = await Review.find(filter)
+    .populate("userId", "name image")
+    .populate("tourId", "title slug")
+    .sort({ createdAt: -1 })
+    .limit(limit + 1);
+
+  const hasNextPage = reviews.length > limit;
+  if (hasNextPage) reviews.pop();
+
+  const nextCursor = hasNextPage ? reviews[reviews.length - 1].createdAt : null;
+  const total = await Review.countDocuments({ guideId });
+
+  return {
+    reviews,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+      hasNextPage,
+      nextCursor,
+    },
+  };
+};
+
+const getUserReviews = async ({
+  userId,
+  page,
+  limit,
+  cursor,
+}: {
+  userId: string;
+  page: number;
+  limit: number;
+  cursor?: string;
+}) => {
+  const filter: any = { userId };
+
+  if (cursor) {
+    filter.createdAt = { $lt: new Date(cursor) };
+  }
+
+  const reviews = await Review.find(filter)
+    .populate("tourId", "title slug")
+    .populate("guideId", "name image")
+    .sort({ createdAt: -1 })
+    .limit(limit + 1);
+
+  const hasNextPage = reviews.length > limit;
+  if (hasNextPage) reviews.pop();
+
+  const nextCursor = hasNextPage ? reviews[reviews.length - 1].createdAt : null;
+  const total = await Review.countDocuments({ userId });
+
+  return {
+    reviews,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+      hasNextPage,
+      nextCursor,
+    },
+  };
+};
+
+const getLatestReviews = async (limit: number = 6) => {
+  const reviews = await Review.find({})
+    .populate("userId", "name image")
+    .populate("tourId", "title location")
+    .sort({ createdAt: -1 })
+    .limit(limit);
+  return reviews;
 };
 
 export const reviewService = {
   createReview,
   updateReview,
-  deleteReview,
   getTourReviews,
   getGuideReviews,
   getUserReviews,
-  getAllReviews,
-  adminDeleteReview,
+  getLatestReviews,
 };
 

@@ -17,7 +17,7 @@ bookingRoutes.post(
 
 bookingRoutes.get(
   "/my-bookings",
-  roleBasedProtection(Roles.TOURIST),
+  roleBasedProtection(Roles.TOURIST, Roles.GUIDE),
   bookingController.getMyBookings
 );
 
@@ -29,21 +29,9 @@ bookingRoutes.post(
 
 // Guide routes
 bookingRoutes.get(
-  "/guide/upcoming",
-  roleBasedProtection(Roles.GUIDE),
-  bookingController.getUpcomingBookings
-);
-
-bookingRoutes.get(
   "/guide/pending",
   roleBasedProtection(Roles.GUIDE),
   bookingController.getPendingBookings
-);
-
-bookingRoutes.get(
-  "/guide/all",
-  roleBasedProtection(Roles.GUIDE),
-  bookingController.getAllGuideBookings
 );
 
 bookingRoutes.patch(
@@ -55,14 +43,7 @@ bookingRoutes.patch(
 
 // Admin routes
 bookingRoutes.get(
-  "/admin/all",
+  "/admin/all-bookings",
   roleBasedProtection(Roles.ADMIN),
   bookingController.getAllBookings
-);
-
-// Common routes
-bookingRoutes.get(
-  "/:id",
-  roleBasedProtection(...Object.values(Roles)),
-  bookingController.getBookingById
 );

@@ -1,12 +1,14 @@
 import { createSlug } from "../../utils/createSlug";
+import { Booking } from "../booking/booking.model";
+import { BOOKING_STATUS } from "../booking/booking.interface";
 import { ITourListing, ITourSearchQuery, TOUR_STATUS } from "./tour.interface";
 import { Tour } from "./tour.model";
 import { Types } from "mongoose";
+import { redis } from "../../lib/connectRedis";
 
 const createTourService = async (tourData: Partial<ITourListing>) => {
   const slug = createSlug(tourData.title!);
   
-  // Check if slug already exists
   const existingTour = await Tour.findOne({ slug });
   if (existingTour) {
     throw new Error("A tour with this title already exists");
@@ -15,21 +17,45 @@ const createTourService = async (tourData: Partial<ITourListing>) => {
   const tour = await Tour.create({ 
     ...tourData, 
     slug,
-    status: tourData.status || TOUR_STATUS.ACTIVE // Default to ACTIVE so tours show up immediately
+    status: tourData.status || TOUR_STATUS.ACTIVE
   });
-  
-  return await Tour.findById(tour._id).populate('guideId', 'name email image');
+
+  return tour;
 };
 
-const getAllToursService = async () => {
-  const tours = await Tour.find({ 
-    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
-    active: true 
-  })
-  .populate('guideId', 'name email image rating reviewCount')
-  .sort({ createdAt: -1 });
-  
-  return tours;
+const getAllFeaturedToursService = async ({cursor}: {cursor?: string}) => {
+
+  const filter : any = {
+    status: TOUR_STATUS.ACTIVE,
+    isFeatured: true,
+  }
+
+  const limit = 4
+
+  if(cursor){
+    filter.createdAt = { $lt: new Date(cursor) }
+  }
+
+  const tours = await Tour.find(filter)
+  .sort({ createdAt: -1 })
+  .limit(limit+1)
+
+  const hasNext = tours.length > limit
+  if(hasNext) tours.pop()
+
+  return {data: tours, nextCursor: hasNext ? tours[tours.length - 1].createdAt : null}
+};
+
+const getAllToursByCategoryService = async (category?: string, location?: string) => {
+  const filter: any = { status: TOUR_STATUS.ACTIVE };
+  if (category) {
+    filter.category = { $regex: category, $options: 'i' };
+  }
+  if (location) {
+    filter.location = { $regex: location, $options: 'i' };
+  }
+  const tours = await Tour.find(filter).sort({ createdAt: -1 });
+  return { total: tours.length, data: tours };
 };
 
 const searchToursService = async (searchQuery: ITourSearchQuery) => {
@@ -51,7 +77,6 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
   // Build filter object
   const filter: any = {
     status: TOUR_STATUS.ACTIVE,
-    active: true
   };
 
   if (category) filter.category = category;
@@ -99,12 +124,8 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
   };
 };
 
-const getTourBySlugService = async (slug: string) => {
-  const tour = await Tour.findOne({ 
-    slug, 
-    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
-    active: true 
-  })
+const getTourByIdService = async (id: string) => {
+  const tour = await Tour.findById(id)
     .populate('guideId', 'name email image bio language rating reviewCount');
   
   if (!tour) {
@@ -114,23 +135,27 @@ const getTourBySlugService = async (slug: string) => {
   return tour;
 };
 
-const getTourByIdService = async (tourId: string) => {
-  if (!Types.ObjectId.isValid(tourId)) {
-    throw new Error("Invalid tour ID");
-  }
+const getGuideMyToursService = async (userId: string) => {
+  const tours = await Tour.find({ guideId: new Types.ObjectId(userId) }).sort({
+    createdAt: -1,
+  });
+  return tours;
+};
 
-  const tour = await Tour.findOne({ 
-    _id: tourId,
-    status: TOUR_STATUS.ACTIVE, // Only show ACTIVE tours to the public
-    active: true 
+const getTouristMyToursService = async (userId: string) => {
+  const bookings = await Booking.find({
+    userId: new Types.ObjectId(userId),
+    status: BOOKING_STATUS.COMPLETED,
   })
-    .populate('guideId', 'name email image bio language rating reviewCount');
-  
-  if (!tour) {
-    throw new Error("Tour not found");
-  }
-  
-  return tour;
+    .populate({
+      path: "tourId",
+      select: "title images location tourFee slug",
+    })
+    .populate("guideId", "name email image")
+    .sort({ createdAt: -1 });
+
+    console.log(bookings);
+  return bookings;
 };
 
 const updateTourService = async (tourId: string, updateData: Partial<ITourListing>, userId: string) => {
@@ -142,13 +167,12 @@ const updateTourService = async (tourId: string, updateData: Partial<ITourListin
   if (!tour) {
     throw new Error("Tour not found");
   }
+  console.log(updateData);
 
-  // Check if user is the guide who created the tour
   if (tour.guideId.toString() !== userId.toString()) {
     throw new Error("You can only update your own tours");
   }
 
-  // If title is being updated, generate new slug
   if (updateData.title && updateData.title !== tour.title) {
     const newSlug = createSlug(updateData.title);
     const existingTour = await Tour.findOne({ slug: newSlug, _id: { $ne: tourId } });
@@ -164,6 +188,8 @@ const updateTourService = async (tourId: string, updateData: Partial<ITourListin
     { new: true, runValidators: true }
   ).populate('guideId', 'name email image');
 
+  // console.log(updatedTour);
+
   return updatedTour;
 };
 
@@ -177,121 +203,34 @@ const deleteTourService = async (tourId: string, userId: string) => {
     throw new Error("Tour not found");
   }
 
-  // Check if user is the guide who created the tour
   if (tour.guideId.toString() !== userId.toString()) {
     throw new Error("You can only delete your own tours");
   }
 
-  // Soft delete by setting active to false
   await Tour.findByIdAndUpdate(tourId, { active: false });
   
-  return { message: "Tour deleted successfully" };
-};
-
-const getMyToursService = async (userId: string) => {
-  console.log(`\n=== getMyToursService called ===`);
-  console.log(`Service: Searching for tours with guideId: ${userId}`);
-  
-  try {
-    // First check what tours exist in the database
-    const allTours = await Tour.find({}).select('guideId title status active');
-    console.log(`Service: Total tours in DB: ${allTours.length}`);
-    console.log(`Service: All tours:`, allTours.map(t => ({ 
-      id: t._id, 
-      guideId: t.guideId.toString(), 
-      title: t.title,
-      status: t.status,
-      active: t.active
-    })));
-    
-    // Try both string and ObjectId comparison
-    const toursWithStringId = await Tour.find({ guideId: userId }).select('title guideId');
-    console.log(`Service: Found ${toursWithStringId.length} tours with string comparison`);
-    
-    const toursWithObjectId = await Tour.find({ guideId: new Types.ObjectId(userId) }).select('title guideId');
-    console.log(`Service: Found ${toursWithObjectId.length} tours with ObjectId comparison`);
-    
-    // Use ObjectId comparison and get full tour data
-    const tours = await Tour.find({ guideId: new Types.ObjectId(userId) })
-      .sort({ createdAt: -1 });
-    
-    console.log(`Service: Final result - Found ${tours.length} tours for guideId: ${userId}`);
-    if (tours.length > 0) {
-      console.log(`Service: Tours found:`, tours.map(t => ({ id: t._id, title: t.title })));
-    }
-    
-    return tours;
-  } catch (error) {
-    console.error(`Service: Error in getMyToursService:`, error);
-    throw error;
-  }
+  return { 
+    message: "Tour deleted successfully",
+    data: tour
+  };
 };
 
 const getAllToursForAdminService = async () => {
-  const { Booking } = await import("../booking/booking.model");
-  
   const tours = await Tour.find()
-    .populate('guideId', 'name email image phone')
+    .populate('guideId', 'name email image')
     .sort({ createdAt: -1 });
-  
-  // Get booking counts and associated tourists for each tour
-  const toursWithBookings = await Promise.all(
-    tours.map(async (tour) => {
-      const bookings = await Booking.find({ tourId: tour._id })
-        .populate('userId', 'name email image')
-        .populate('payment', 'status amount transactionId')
-        .sort({ createdAt: -1 });
-      
-      const bookingCount = bookings.length;
-      const confirmedBookings = bookings.filter((b: any) => b.status === 'CONFIRMED').length;
-      const totalRevenue = bookings
-        .filter((b: any) => b.payment?.status === 'PAID')
-        .reduce((sum: number, b: any) => sum + (b.payment?.amount || 0), 0);
-      
-      return {
-        ...tour.toObject(),
-        bookingCount,
-        confirmedBookings,
-        totalRevenue,
-        recentBookings: bookings.slice(0, 5), // Last 5 bookings
-      };
-    })
-  );
-  
-  return toursWithBookings;
-};
-
-const updateTourRatingService = async (tourId: string, newRating: number, reviewCount: number) => {
-  if (!Types.ObjectId.isValid(tourId)) {
-    throw new Error("Invalid tour ID");
-  }
-
-  await Tour.findByIdAndUpdate(tourId, {
-    rating: newRating,
-    reviewCount: reviewCount
-  });
-};
-
-const incrementBookingCountService = async (tourId: string) => {
-  if (!Types.ObjectId.isValid(tourId)) {
-    throw new Error("Invalid tour ID");
-  }
-
-  await Tour.findByIdAndUpdate(tourId, {
-    $inc: { bookingCount: 1 }
-  });
+  return tours;
 };
 
 export const tourServices = {
   createTourService,
-  getAllToursService,
+  getAllFeaturedToursService,
   searchToursService,
-  getTourBySlugService,
   getTourByIdService,
   updateTourService,
   deleteTourService,
-  getMyToursService,
+  getGuideMyToursService,
+  getTouristMyToursService,
   getAllToursForAdminService,
-  updateTourRatingService,
-  incrementBookingCountService
+  getAllToursByCategoryService
 };

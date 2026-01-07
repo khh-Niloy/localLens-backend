@@ -10,7 +10,12 @@ export const userRoutes = Router();
 
 // Public routes
 userRoutes.get("/enums", userController.getUserEnums); // Get roles and statuses
-userRoutes.get("/profile/:id", userController.getPublicProfile);
+
+userRoutes.post(
+  "/register",
+  validateSchema(userCreateZodSchema),
+  userController.createUser
+);
 
 // Protected routes
 userRoutes.get(
@@ -22,38 +27,14 @@ userRoutes.get(
 userRoutes.patch(
   "/profile",
   roleBasedProtection(...Object.values(Roles)),
-  profileUpload.single('image'), // Handle single file upload for profile picture
+  profileUpload.single('image'),
   validateSchema(userUpdateZodSchema),
   userController.updateProfile
 );
 
-userRoutes.post(
-  "/register",
-  validateSchema(userCreateZodSchema),
-  userController.createUser
-);
-
 // Admin routes
 userRoutes.get(
-  "/admin/all",
+  "/admin/all-users",
   roleBasedProtection(Roles.ADMIN),
-  userController.getAllUser
-);
-
-userRoutes.get(
-  "/admin/role/:role",
-  roleBasedProtection(Roles.ADMIN),
-  userController.getUsersByRole
-);
-
-userRoutes.patch(
-  "/admin/:id",
-  roleBasedProtection(Roles.ADMIN),
-  userController.updateUser
-);
-
-userRoutes.delete(
-  "/admin/:id",
-  roleBasedProtection(Roles.ADMIN),
-  userController.deleteUser
+  userController.getAllUsers
 );

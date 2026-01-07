@@ -10,10 +10,13 @@ export const globalErrorHandler = async(
   next: NextFunction
 ) => {
 
-  res.status(500).json({
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Something went wrong!";
+
+  res.status(statusCode).json({
     success: false,
-    message: `something went wrong : ${err.message}`,
+    message,
     err,
-    stack: envVars.NODE_ENV == "development" ? err.stack : null,
+    stack: envVars.NODE_ENV === "development" ? err.stack : null,
   });
 };

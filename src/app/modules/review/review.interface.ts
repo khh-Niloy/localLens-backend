@@ -7,8 +7,7 @@ export interface IReview {
   guideId: Types.ObjectId;
   bookingId: Types.ObjectId;
   rating: number;
-  comment: string;
-  helpful?: number;
+  comment?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
