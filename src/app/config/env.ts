@@ -27,6 +27,7 @@ interface IEnvVars {
   SSL_SUCCESS_FRONTEND_URL: string;
   SSL_FAIL_FRONTEND_URL: string;
   SSL_CANCEL_FRONTEND_URL: string;
+  REDIS_URL: string;
 }
 
 const loadEnvVars = (): IEnvVars => {
@@ -88,6 +89,7 @@ const loadEnvVars = (): IEnvVars => {
     SSL_SUCCESS_FRONTEND_URL: process.env.SSL_SUCCESS_FRONTEND_URL as string,
     SSL_FAIL_FRONTEND_URL: process.env.SSL_FAIL_FRONTEND_URL as string,
     SSL_CANCEL_FRONTEND_URL: process.env.SSL_CANCEL_FRONTEND_URL as string,
+    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
   };
 };
 

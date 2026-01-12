@@ -2,9 +2,9 @@ import { createSlug } from "../../utils/createSlug";
 import { Booking } from "../booking/booking.model";
 import { BOOKING_STATUS } from "../booking/booking.interface";
 import { ITourListing, ITourSearchQuery, TOUR_STATUS } from "./tour.interface";
+import { Roles } from "../users/user.interface";
 import { Tour } from "./tour.model";
 import { Types } from "mongoose";
-import { redis } from "../../lib/connectRedis";
 
 const createTourService = async (tourData: Partial<ITourListing>) => {
   const slug = createSlug(tourData.title!);
@@ -38,6 +38,7 @@ const getAllFeaturedToursService = async ({cursor}: {cursor?: string}) => {
 
   const tours = await Tour.find(filter)
   .sort({ createdAt: -1 })
+  .populate('guideId', 'name email image bio language')
   .limit(limit+1)
 
   const hasNext = tours.length > limit
@@ -54,7 +55,8 @@ const getAllToursByCategoryService = async (category?: string, location?: string
   if (location) {
     filter.location = { $regex: location, $options: 'i' };
   }
-  const tours = await Tour.find(filter).sort({ createdAt: -1 });
+  const tours = await Tour.find(filter).sort({ createdAt: -1 })
+  .populate('guideId', 'name email image bio language');
   return { total: tours.length, data: tours };
 };
 
@@ -127,11 +129,10 @@ const searchToursService = async (searchQuery: ITourSearchQuery) => {
 const getTourByIdService = async (id: string) => {
   const tour = await Tour.findById(id)
     .populate('guideId', 'name email image bio language rating reviewCount');
-  
+
   if (!tour) {
     throw new Error("Tour not found");
   }
-  
   return tour;
 };
 

@@ -1,2 +1,4 @@
 import Redis from "ioredis";
-export const redis = new Redis();
+import { envVars } from "../config/env";
+
+export const redis = new Redis(envVars.REDIS_URL);

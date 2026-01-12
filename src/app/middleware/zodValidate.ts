@@ -8,12 +8,17 @@ export const validateSchema =
       // Handle multipart form data if it's sent as a single 'data' field
       if (req.body?.data) {
         try {
-          const parsedData = JSON.parse(req.body.data);
-          req.body = { ...req.body, ...parsedData };
+          const parsedData = typeof req.body.data === 'string' 
+            ? JSON.parse(req.body.data) 
+            : req.body.data;
+          
+          if (typeof parsedData === 'object' && parsedData !== null) {
+            req.body = { ...req.body, ...parsedData };
+          }
           // Optionally delete req.body.data if you don't want it sticking around
           // delete req.body.data;
         } catch (error) {
-          // If JSON.parse fails, we keep req.body as is
+          // If parsing fails, we keep req.body as is
         }
       }
 
@@ -39,6 +44,8 @@ export const validateSchema =
       if (validatedData.query) {
         req.query = validatedData.query as any;
       }
+
+
 
       next();
     } catch (error) {

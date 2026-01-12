@@ -201,12 +201,12 @@ const getUserReviews = async ({
   };
 };
 
-const getLatestReviews = async (limit: number = 6) => {
+const getLatestReviews = async () => {
   const reviews = await Review.find({})
     .populate("userId", "name image")
     .populate("tourId", "title location")
     .sort({ createdAt: -1 })
-    .limit(limit);
+    // .limit(6);
   return reviews;
 };
 

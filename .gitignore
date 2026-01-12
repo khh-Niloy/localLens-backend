@@ -5,3 +5,6 @@ dist
 .vercel
 *.md
 scripts
+
+test.ts
+.vscode
