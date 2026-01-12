@@ -30,7 +30,9 @@ const createTour = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.log("Error creating tour:", error);
-    const statusCode = (error as Error).message.includes("already exists") ? 409 : 500;
+    const statusCode = (error as Error).message.includes("already exists")
+      ? 409
+      : 500;
     responseManager.error(res, error as Error, statusCode);
   }
 };
@@ -49,9 +51,9 @@ const getTourEnums = async (req: Request, res: Response) => {
 
     const data = {
       categories: Object.values(TOUR_CATEGORY),
-      statuses: Object.values(TOUR_STATUS)
+      statuses: Object.values(TOUR_STATUS),
     };
-    
+
     redis.set("tour:enums", JSON.stringify(data), "EX", 86400);
 
     responseManager.success(res, {
@@ -60,7 +62,7 @@ const getTourEnums = async (req: Request, res: Response) => {
       message: "Tour enums fetched successfully",
       data: {
         categories: Object.values(TOUR_CATEGORY),
-        statuses: Object.values(TOUR_STATUS)
+        statuses: Object.values(TOUR_STATUS),
       },
     });
   } catch (error) {
@@ -73,12 +75,12 @@ const getAllFeaturedTours = async (req: Request, res: Response) => {
   try {
     const version = (await redis.get("featured:version")) || 1;
 
-    const { cursor } = req.query;
+    const cursor = req.query.cursor as string;
     const cursorKey = cursor || "first";
     const cacheKey = `featured-ids:${version}:cursor:${cursorKey}`;
 
     const cachedIdsData = await redis.get(cacheKey);
-    
+
     if (cachedIdsData) {
       const { ids, nextCursor } = JSON.parse(cachedIdsData);
 
@@ -87,11 +89,15 @@ const getAllFeaturedTours = async (req: Request, res: Response) => {
           const version = (await redis.get(`tour:detail:${id}:version`)) || 1;
           const detailCache = await redis.get(`tour:detail:${id}:${version}`);
           if (detailCache) return JSON.parse(detailCache);
-          
+
           try {
             const tour = await tourServices.getTourByIdService(id);
             if (tour) {
-              await redis.setex(`tour:detail:${id}:${version}`, 3600, JSON.stringify(tour));
+              await redis.setex(
+                `tour:detail:${id}:${version}`,
+                3600,
+                JSON.stringify(tour)
+              );
             }
             return tour;
           } catch (error) {
@@ -105,21 +111,28 @@ const getAllFeaturedTours = async (req: Request, res: Response) => {
         success: true,
         message: "Featured tours fetched successfully",
         data: {
-          data: hydratedTours.filter(t => t !== null), 
-          nextCursor
+          data: hydratedTours.filter((t) => t !== null),
+          nextCursor,
         },
       });
     }
 
-    const { data, nextCursor } = await tourServices.getAllFeaturedToursService({ cursor: cursor as string });
+    const { data, nextCursor } = await tourServices.getAllFeaturedToursService({
+      cursor: cursor as string,
+    });
 
     const ids = data.map((t: any) => t._id.toString());
     await redis.setex(cacheKey, 900, JSON.stringify({ ids, nextCursor }));
 
     await Promise.all(
       data.map(async (tour: any) => {
-        const version = (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
-        await redis.setex(`tour:detail:${tour._id.toString()}:${version}`, 3600, JSON.stringify(tour));
+        const version =
+          (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
+        await redis.setex(
+          `tour:detail:${tour._id.toString()}:${version}`,
+          3600,
+          JSON.stringify(tour)
+        );
       })
     );
 
@@ -140,21 +153,25 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
     const { category, location } = req.query;
 
     const globalVersion = (await redis.get("global:tours:version")) || 1;
-    const cacheKey = `tour-list-ids:cat:${category || 'all'}:loc:${location || 'all'}:v:${globalVersion}`;
+    const cacheKey = `tour-list-ids:cat:${category || "all"}:loc:${location || "all"}:v:${globalVersion}`;
 
     const cachedIdsData = await redis.get(cacheKey);
     if (cachedIdsData) {
       const { ids, total: cachedTotal } = JSON.parse(cachedIdsData);
-      
+
       const hydratedTours = await Promise.all(
         ids.map(async (id: string) => {
           const version = (await redis.get(`tour:detail:${id}:version`)) || 1;
           const detailCache = await redis.get(`tour:detail:${id}:${version}`);
           if (detailCache) return JSON.parse(detailCache);
-          
+
           const tour = await tourServices.getTourByIdService(id);
           if (tour) {
-            await redis.setex(`tour:detail:${id}:${version}`, 300, JSON.stringify(tour));
+            await redis.setex(
+              `tour:detail:${id}:${version}`,
+              300,
+              JSON.stringify(tour)
+            );
           }
           return tour;
         })
@@ -165,11 +182,14 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
         success: true,
         message: "Tours fetched successfully",
         meta: cachedTotal,
-        data: hydratedTours.filter(t => t !== null)
+        data: hydratedTours.filter((t) => t !== null),
       });
     }
 
-    const { data, total } = await tourServices.getAllToursByCategoryService(category as string, location as string);
+    const { data, total } = await tourServices.getAllToursByCategoryService(
+      category as string,
+      location as string
+    );
 
     // Cache the List Structure (IDs)
     const ids = data.map((t: any) => t._id.toString());
@@ -178,8 +198,13 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
     // Pre-cache individual tour details for future list requests
     await Promise.all(
       data.map(async (tour: any) => {
-        const version = (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
-        await redis.setex(`tour:detail:${tour._id.toString()}:${version}`, 3600, JSON.stringify(tour));
+        const version =
+          (await redis.get(`tour:detail:${tour._id.toString()}:version`)) || 1;
+        await redis.setex(
+          `tour:detail:${tour._id.toString()}:${version}`,
+          3600,
+          JSON.stringify(tour)
+        );
       })
     );
 
@@ -188,7 +213,7 @@ const getAllToursByCategory = async (req: Request, res: Response) => {
       success: true,
       message: "Tours fetched successfully",
       meta: total,
-      data: data
+      data: data,
     });
   } catch (error) {
     logger.log("Error fetching tours by category:", error);
@@ -200,7 +225,7 @@ const searchTours = async (req: Request, res: Response) => {
   try {
     const searchQuery = req.query as unknown as ITourSearchQuery;
     const result = await tourServices.searchToursService(searchQuery);
-    
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -208,7 +233,7 @@ const searchTours = async (req: Request, res: Response) => {
       meta: result.pagination.totalItems,
       data: {
         tours: result.tours,
-        pagination: result.pagination
+        pagination: result.pagination,
       },
     });
   } catch (error) {
@@ -221,13 +246,12 @@ const getTourById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const version = (await redis.get(`tour:detail:${id}:version`) || 1);
+    const version = (await redis.get(`tour:detail:${id}:version`)) || 1;
     const cacheKey = `tour:detail:${id}:${version}`;
     console.log("Tour version: ", version);
-    console.log("Tour id: ", id);
+    // console.log("Tour id: ", id);
 
     const cachedTour = await redis.get(cacheKey);
-
 
     if (cachedTour) {
       return responseManager.success(res, {
@@ -241,7 +265,7 @@ const getTourById = async (req: Request, res: Response) => {
     const tour = await tourServices.getTourByIdService(id);
 
     await redis.setex(cacheKey, 3600, JSON.stringify(tour));
-    
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -250,7 +274,8 @@ const getTourById = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.log("Error fetching tour by id:", error);
-    const statusCode = (error as Error).message === "Tour not found" ? 404 : 500;
+    const statusCode =
+      (error as Error).message === "Tour not found" ? 404 : 500;
     responseManager.error(res, error as Error, statusCode);
   }
 };
@@ -264,7 +289,7 @@ const getGuideMyTours = async (req: Request, res: Response) => {
 
     const cachedGuideTours = await redis.get(cacheKey);
 
-    if(cachedGuideTours){
+    if (cachedGuideTours) {
       return responseManager.success(res, {
         statusCode: 200,
         success: true,
@@ -272,11 +297,11 @@ const getGuideMyTours = async (req: Request, res: Response) => {
         data: JSON.parse(cachedGuideTours),
       });
     }
-    
+
     const tours = await tourServices.getGuideMyToursService(userId);
 
     await redis.setex(cacheKey, 600, JSON.stringify(tours));
-    
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -300,7 +325,7 @@ const getTouristMyTours = async (req: Request, res: Response) => {
 
     const cachedTouristTours = await redis.get(cacheKey);
 
-    if(cachedTouristTours){
+    if (cachedTouristTours) {
       return responseManager.success(res, {
         statusCode: 200,
         success: true,
@@ -312,7 +337,7 @@ const getTouristMyTours = async (req: Request, res: Response) => {
     const tours = await tourServices.getTouristMyToursService(userId);
 
     await redis.setex(cacheKey, 300, JSON.stringify(tours));
-    
+
     responseManager.success(res, {
       statusCode: 200,
       success: true,
@@ -332,27 +357,27 @@ const updateTour = async (req: Request, res: Response) => {
 
     const files = req.files as Express.Multer.File[];
     const updateData = { ...req.body };
-    
+
     if (files && files.length > 0) {
       updateData.images = files.map((file) => file.path);
     }
 
-    console.log(updateData);
+    // console.log(updateData);
 
     const tour = await tourServices.updateTourService(id, updateData, userId);
 
-    // Invalidate featured cache if handling a featured tour
-    // We check if the tour is currently featured (tour.isFeatured) OR if the 'isFeatured' status is being toggled
-    const shouldInvalidateFeatured = req.body.isFeatured !== undefined || tour?.isFeatured;
+    const shouldInvalidateFeatured =
+      req.body.isFeatured !== undefined || tour?.isFeatured;
 
     if (shouldInvalidateFeatured) {
-        await redis.incr("featured:version");
+      await redis.incr("featured:version");
     }
 
-    // Invalidate Global List (Category/Location) only if filtering fields change
-    // If we simply update title/description, the list structure (IDs) remains valid.
-    // But if we change category, location, or price (sorting), the list order/contents might change.
-    if (req.body.category || req.body.location || req.body.tourFee !== undefined) {
+    if (
+      req.body.category ||
+      req.body.location ||
+      req.body.tourFee !== undefined
+    ) {
       await redis.incr("global:tours:version");
     }
 
@@ -360,7 +385,7 @@ const updateTour = async (req: Request, res: Response) => {
     await redis.incr(`tour:detail:${id}:version`);
 
     console.log("Tour updated successfully, invalidating cache");
-    console.log("Tour id: ", id);
+    // console.log("Tour id: ", id);
 
     responseManager.success(res, {
       statusCode: 200,
@@ -371,9 +396,15 @@ const updateTour = async (req: Request, res: Response) => {
   } catch (error) {
     logger.log("Error updating tour:", error);
     let statusCode = 500;
-    if ((error as Error).message.includes("not found") || (error as Error).message.includes("Invalid")) {
+    if (
+      (error as Error).message.includes("not found") ||
+      (error as Error).message.includes("Invalid")
+    ) {
       statusCode = 404;
-    } else if ((error as Error).message.includes("only update your own") || (error as Error).message.includes("already exists")) {
+    } else if (
+      (error as Error).message.includes("only update your own") ||
+      (error as Error).message.includes("already exists")
+    ) {
       statusCode = 403;
     }
     responseManager.error(res, error as Error, statusCode);
@@ -406,7 +437,10 @@ const deleteTour = async (req: Request, res: Response) => {
   } catch (error) {
     logger.log("Error deleting tour:", error);
     let statusCode = 500;
-    if ((error as Error).message.includes("not found") || (error as Error).message.includes("Invalid")) {
+    if (
+      (error as Error).message.includes("not found") ||
+      (error as Error).message.includes("Invalid")
+    ) {
       statusCode = 404;
     } else if ((error as Error).message.includes("only delete your own")) {
       statusCode = 403;
@@ -441,5 +475,5 @@ export const TourController = {
   getTouristMyTours,
   getTourEnums,
   getAllToursForAdmin,
-  getAllToursByCategory
+  getAllToursByCategory,
 };

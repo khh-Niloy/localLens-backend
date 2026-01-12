@@ -6,6 +6,7 @@ import { wishlistRoutes } from "./modules/wishlist/wishlist.route";
 import { bookingRoutes } from "./modules/booking/booking.routes";
 import { reviewRoutes } from "./modules/review/review.routes";
 import { paymentRoutes } from "./modules/payment/payment.routes";
+import { messageRoutes } from "./modules/web-socket/message.route";
 
 export const routes = Router();
 
@@ -37,6 +38,10 @@ const allRoutes = [
   {
     path: "/payment",
     route: paymentRoutes,
+  },
+  {
+    path: "/conversation",
+    route: messageRoutes,
   },
 ];
 

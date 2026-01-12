@@ -207,7 +207,6 @@ const getLatestReviews = async () => {
     .populate("tourId", "title location")
     .sort({ createdAt: -1 })
     // .limit(6);
-    console.log(reviews);
   return reviews;
 };
 
