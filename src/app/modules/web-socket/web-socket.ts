@@ -4,12 +4,13 @@ import { app } from "../../../app";
 import { disconnect } from "process";
 import { conversationModel, messageModel } from "./message.model";
 import { IMessage } from "./message.interface";
+import { envVars } from "../../config/env";
 
 export const httpServer = createServer(app);
 
 const webSocketServer = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: envVars.CORS_FRONTEND_URL,
   },
 });
 

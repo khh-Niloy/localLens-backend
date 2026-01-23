@@ -13,7 +13,6 @@ const createBooking = async (req: Request, res: Response) => {
       jwt_user.userId
     );
 
-    // Cache Invalidation
     await redis.incr(`booking:my:user:${jwt_user.userId}:v`);
     await redis.incr(`booking:my:user:${result?.guideId}:v`);
     await redis.incr(`booking:pending:guide:${result?.guideId}:v`);
@@ -71,22 +70,22 @@ const getPendingBookings = async (req: Request, res: Response) => {
   try {
     const jwt_user = req.user as JwtPayload;
     
-    const version = (await redis.get(`booking:pending:guide:${jwt_user.userId}:v`)) || 1;
-    const cacheKey = `booking:pending:guide:${jwt_user.userId}:v:${version}`;
+    // const version = (await redis.get(`booking:pending:guide:${jwt_user.userId}:v`)) || 1;
+    // const cacheKey = `booking:pending:guide:${jwt_user.userId}:v:${version}`;
 
-    const cachedBookings = await redis.get(cacheKey);
-    if (cachedBookings) {
-      return responseManager.success(res, {
-        statusCode: 200,
-        success: true,
-        message: "Pending bookings retrieved successfully",
-        data: JSON.parse(cachedBookings),
-      });
-    }
+    // const cachedBookings = await redis.get(cacheKey);
+    // if (cachedBookings) {
+    //   return responseManager.success(res, {
+    //     statusCode: 200,
+    //     success: true,
+    //     message: "Pending bookings retrieved successfully",
+    //     data: JSON.parse(cachedBookings),
+    //   });
+    // }
 
     const result = await bookingServices.getPendingBookingsService(jwt_user.userId);
 
-    await redis.setex(cacheKey, 1800, JSON.stringify(result));
+    // await redis.setex(cacheKey, 1800, JSON.stringify(result));
 
     return responseManager.success(res, {
       statusCode: 200,
